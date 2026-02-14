@@ -1,6 +1,7 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { web } from '../api/client'
+import { v1, web } from '../api/client'
+import type { V2Node } from '../types'
 import { useAuth } from '../hooks/useAuth'
 import Header from '../components/Header'
 import styles from './CreateTopic.module.css'
@@ -10,13 +11,45 @@ export default function CreateTopic() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
 
-  const [nodeName, setNodeName] = useState(searchParams.get('node') || '')
+  const prefilledNode = searchParams.get('node') || ''
+  const [nodeName, setNodeName] = useState(prefilledNode)
+  const [nodeInput, setNodeInput] = useState(prefilledNode)
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [syntax, setSyntax] = useState('default')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  const [allNodes, setAllNodes] = useState<V2Node[]>([])
+  const [showDropdown, setShowDropdown] = useState(false)
+
+  useEffect(() => {
+    v1.allNodes().then((nodes) => {
+      const sorted = [...nodes].sort((a, b) => b.topics - a.topics)
+      setAllNodes(sorted)
+      // If prefilled, resolve display text
+      if (prefilledNode) {
+        const found = nodes.find(n => n.name === prefilledNode)
+        if (found) setNodeInput(`${found.title} - ${found.name}`)
+      }
+    })
+  }, [prefilledNode])
+
+  const filtered = useMemo(() => {
+    if (!nodeInput.trim()) return allNodes.slice(0, 8)
+    const q = nodeInput.toLowerCase()
+    return allNodes
+      .filter(n => n.title.toLowerCase().includes(q) || n.name.toLowerCase().includes(q))
+      .slice(0, 8)
+  }, [allNodes, nodeInput])
+
+  const selectNode = (node: V2Node) => {
+    setNodeName(node.name)
+    setNodeInput(`${node.title} - ${node.name}`)
+    setShowDropdown(false)
+  }
 
   // Auto-expand textarea
   useEffect(() => {
@@ -32,7 +65,7 @@ export default function CreateTopic() {
       return
     }
     if (!nodeName.trim()) {
-      setError('请输入节点名称')
+      setError('请选择节点')
       return
     }
     setError('')
@@ -72,14 +105,44 @@ export default function CreateTopic() {
       <div className={styles.form}>
         <div className={styles.field}>
           <label className={styles.label}>节点</label>
-          <input
-            className={styles.input}
-            type="text"
-            placeholder="节点名称，如 python、programmer"
-            value={nodeName}
-            onChange={e => setNodeName(e.target.value)}
-            disabled={submitting}
-          />
+          <div className={styles.nodeInputWrap}>
+            <input
+              className={styles.input}
+              type="text"
+              placeholder="搜索节点，如 Python、程序员"
+              value={nodeInput}
+              onChange={e => {
+                setNodeInput(e.target.value)
+                setNodeName('')
+                setShowDropdown(true)
+              }}
+              onFocus={() => setShowDropdown(true)}
+              onBlur={() => setShowDropdown(false)}
+              onKeyDown={e => {
+                if (e.key === 'Escape') setShowDropdown(false)
+              }}
+              disabled={submitting}
+            />
+            {showDropdown && filtered.length > 0 && (
+              <div
+                ref={dropdownRef}
+                className={styles.dropdown}
+                onMouseDown={e => e.preventDefault()}
+              >
+                {filtered.map(node => (
+                  <button
+                    key={node.id}
+                    className={`${styles.dropdownItem} ${nodeName === node.name ? styles.dropdownItemSelected : ''}`}
+                    onClick={() => selectNode(node)}
+                    type="button"
+                  >
+                    <span className={styles.dropdownTitle}>{node.title}</span>
+                    <span className={styles.dropdownName}>{node.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className={styles.field}>
