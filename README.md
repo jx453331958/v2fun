@@ -28,7 +28,7 @@ bash <(curl -sL https://raw.githubusercontent.com/jx453331958/v2fun/main/v2fun.s
 安装完成后，进入安装目录即可管理：
 
 ```bash
-cd /opt/v2fun       # 默认安装目录
+cd ./v2fun          # 默认安装到当前目录下的 v2fun/
 bash v2fun.sh       # 打开管理面板
 ```
 

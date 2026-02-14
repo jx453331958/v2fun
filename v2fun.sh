@@ -31,7 +31,7 @@ get_ip() {
 
 # 从已有安装目录加载配置
 load_conf() {
-  local dir="${V2FUN_DIR:-/opt/v2fun}"
+  local dir="${V2FUN_DIR:-$(pwd)}"
   if [ -f "$dir/.v2fun.conf" ]; then
     # shellcheck source=/dev/null
     source "$dir/.v2fun.conf"
@@ -121,7 +121,7 @@ do_install() {
   check_git
 
   # 1) 安装目录
-  local default_dir="/opt/v2fun"
+  local default_dir="$(pwd)/v2fun"
   read -rp "$(echo -e "${CYAN}安装目录${NC} [${DIM}${default_dir}${NC}]: ")" input_dir
   INSTALL_DIR="${input_dir:-$default_dir}"
 
