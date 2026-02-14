@@ -434,13 +434,35 @@ app.post('/web/reply', express.json({ limit: '16kb' }), async (req, res) => {
         'Origin': 'https://www.v2ex.com',
         'Referer': `https://www.v2ex.com/t/${topicId}`,
       },
-      redirect: 'manual',
+      redirect: 'follow',
     })
 
-    // V2EX redirects to the topic page on success (302)
-    if (postRes.status === 302 || postRes.status === 200) {
+    const body = await postRes.text()
+    const finalUrl = postRes.url || ''
+    console.log(`[web/reply] POST /t/${topicId} → ${postRes.status}, url: ${finalUrl}, body: ${body.length} bytes`)
+
+    // Check for signs of failure in the response
+    if (finalUrl.includes('/signin') || body.includes('/signin')) {
+      return res.json({ success: false, error: 'cookie_expired', message: 'Cookie 已过期，请重新登录' })
+    }
+    // V2EX shows error messages in <div class="problem">
+    const problemMatch = body.match(/<div class="problem">([\s\S]*?)<\/div>/)
+    if (problemMatch) {
+      const errorText = problemMatch[1].replace(/<[^>]*>/g, '').trim()
+      console.error(`[web/reply] V2EX error: ${errorText}`)
+      return res.json({ success: false, error: 'reply_failed', message: errorText || '回复失败' })
+    }
+    // If we ended up on the topic page, consider it success
+    if (finalUrl.includes(`/t/${topicId}`) || postRes.status === 200) {
+      // Double-check: see if our content appears in the page
+      if (body.includes(content.substring(0, 20))) {
+        return res.json({ success: true })
+      }
+      // Content not found — might still be OK (pagination), trust the redirect
+      console.log(`[web/reply] Reply content not found in response page, but URL looks OK`)
       return res.json({ success: true })
     }
+    console.error(`[web/reply] Unexpected: status=${postRes.status}, url=${finalUrl}`)
     res.json({ success: false, error: 'reply_failed', message: '回复失败，请稍后重试' })
   } catch (err) {
     if (err.message === 'cookie_expired') {
