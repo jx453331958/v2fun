@@ -77,7 +77,9 @@ export default function TopicDetail() {
 
       if (targetPage > 1) {
         // Need to load more pages first
-        const allLoaded = await loadUpToPage(targetPage)
+        // loadUpToPage puts ALL pages (1..N) into hook items,
+        // so clear firstPageReplies to avoid duplicates
+        await loadUpToPage(targetPage)
         setFirstPageReplies([])
         // Wait for render
         requestAnimationFrame(() => {
@@ -85,8 +87,6 @@ export default function TopicDetail() {
             scrollToElement(scrollToFloor)
           })
         })
-        // Update firstPageReplies with all loaded data
-        setFirstPageReplies(allLoaded)
       } else {
         // Already on first page, just scroll
         requestAnimationFrame(() => {

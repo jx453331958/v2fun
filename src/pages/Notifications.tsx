@@ -66,6 +66,12 @@ export default function Notifications() {
     },
   })
 
+  const navigateToTopic = (topicId: number, replyFloor?: number) => {
+    navigate(`/topic/${topicId}`, {
+      state: replyFloor ? { scrollToFloor: replyFloor } : undefined,
+    })
+  }
+
   const handleItemClick = (notif: V2Notification, e: React.MouseEvent) => {
     // Check if clicked on an anchor tag inside the notification
     const target = e.target as HTMLElement
@@ -76,9 +82,7 @@ export default function Notifications() {
       const parsed = parseNotificationLink(href)
       if (parsed) {
         if (parsed.type === 'topic') {
-          navigate(`/topic/${parsed.topicId}`, {
-            state: parsed.replyFloor ? { scrollToFloor: parsed.replyFloor } : undefined,
-          })
+          navigateToTopic(parsed.topicId, parsed.replyFloor)
         } else if (parsed.type === 'member') {
           navigate(`/member/${parsed.username}`)
         }
@@ -87,11 +91,9 @@ export default function Notifications() {
     }
 
     // Clicking the whole item navigates to the topic
-    const parsed = parseNotification(notif.payload_rendered || notif.text)
+    const parsed = parseNotification(notif.payload_rendered || notif.text || '')
     if (parsed) {
-      navigate(`/topic/${parsed.topicId}`, {
-        state: parsed.replyFloor ? { scrollToFloor: parsed.replyFloor } : undefined,
-      })
+      navigateToTopic(parsed.topicId, parsed.replyFloor)
     }
   }
 
@@ -132,16 +134,18 @@ export default function Notifications() {
                 className={styles.item}
                 onClick={(e) => handleItemClick(notif, e)}
               >
-                <div className={styles.itemAvatar}>
-                  <img
-                    src={fixAvatarUrl(notif.member.avatar_normal || notif.member.avatar)}
-                    alt={notif.member.username}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      navigate(`/member/${notif.member.username}`)
-                    }}
-                  />
-                </div>
+                {notif.member && (
+                  <div className={styles.itemAvatar}>
+                    <img
+                      src={fixAvatarUrl(notif.member.avatar_normal || notif.member.avatar_mini || notif.member.avatar_large || notif.member.avatar)}
+                      alt={notif.member.username}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        navigate(`/member/${notif.member.username}`)
+                      }}
+                    />
+                  </div>
+                )}
                 <div className={styles.itemBody}>
                   <div
                     className={styles.itemText}

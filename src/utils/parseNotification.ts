@@ -8,6 +8,7 @@ interface NotificationTarget {
  * V2EX notification links look like: /t/123456#reply45
  */
 export function parseNotification(payloadRendered: string): NotificationTarget | null {
+  if (!payloadRendered) return null
   // Match /t/{topicId} with optional #reply{floor}
   const match = payloadRendered.match(/\/t\/(\d+)(?:#reply(\d+))?/)
   if (!match) return null
@@ -34,6 +35,7 @@ type ParsedLink = ParsedTopicLink | ParsedMemberLink
  * Parse an href from notification HTML to determine navigation target.
  */
 export function parseNotificationLink(href: string): ParsedLink | null {
+  if (!href) return null
   // Topic link: /t/123456 or /t/123456#reply45
   const topicMatch = href.match(/\/t\/(\d+)(?:#reply(\d+))?/)
   if (topicMatch) {

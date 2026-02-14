@@ -112,7 +112,7 @@ app.use((_req, res, next) => {
     "default-src 'self'",
     "script-src 'self' https://static.cloudflareinsights.com",
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' https://cdn.v2ex.com https://*.v2ex.com data:",
+    "img-src 'self' https://cdn.v2ex.com https://*.v2ex.com https://cdn.v2ex.co https://*.v2ex.co data:",
     "font-src 'self'",
     "connect-src 'self'",
     "frame-src 'none'",
