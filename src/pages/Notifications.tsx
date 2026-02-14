@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { formatDistanceToNow } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
-import { v2 } from '../api/client'
+import { v1, v2 } from '../api/client'
 import { useAuth } from '../hooks/useAuth'
 import type { V2Notification } from '../types'
 import Loading from '../components/Loading'
@@ -19,19 +19,54 @@ export default function Notifications() {
   const navigate = useNavigate()
   const [firstPageNotifications, setFirstPageNotifications] = useState<V2Notification[]>([])
   const [loading, setLoading] = useState(true)
+  // V2 notification API only returns { username } in member — fetch avatars via V1 API
+  const [avatarMap, setAvatarMap] = useState<Record<string, string>>({})
+  const fetchedUsersRef = useRef<Set<string>>(new Set())
+
+  const fetchAvatars = useCallback(async (notifications: V2Notification[]) => {
+    const usernames = [...new Set(
+      notifications.map((n) => n.member?.username).filter((u): u is string => !!u)
+    )]
+    const missing = usernames.filter((u) => !fetchedUsersRef.current.has(u))
+    if (missing.length === 0) return
+
+    // Mark as fetched immediately to avoid duplicate requests
+    for (const u of missing) fetchedUsersRef.current.add(u)
+
+    const results = await Promise.allSettled(
+      missing.map((u) =>
+        v1.memberInfo(u).then((m) =>
+          [u, fixAvatarUrl(m.avatar_normal || m.avatar_large || m.avatar)] as const
+        )
+      )
+    )
+    const newEntries: Record<string, string> = {}
+    for (const r of results) {
+      if (r.status === 'fulfilled' && r.value[1]) {
+        newEntries[r.value[0]] = r.value[1]
+      }
+    }
+    if (Object.keys(newEntries).length > 0) {
+      setAvatarMap((prev) => ({ ...prev, ...newEntries }))
+    }
+  }, [])
 
   const fetchFirstPage = useCallback(async () => {
     if (!isLoggedIn) return
     setLoading(true)
     try {
       const res = await v2.notifications(1)
-      if (res.success) setFirstPageNotifications(res.result || [])
+      if (res.success) {
+        const list = res.result || []
+        setFirstPageNotifications(list)
+        fetchAvatars(list)
+      }
     } catch {
       // ignore
     } finally {
       setLoading(false)
     }
-  }, [isLoggedIn])
+  }, [isLoggedIn, fetchAvatars])
 
   useEffect(() => {
     if (!isLoggedIn) {
@@ -59,21 +94,27 @@ export default function Notifications() {
 
   const allNotifications = [...firstPageNotifications, ...moreNotifications]
 
+  // Fetch avatars for newly loaded pages
+  useEffect(() => {
+    if (moreNotifications.length > 0) fetchAvatars(moreNotifications)
+  }, [moreNotifications, fetchAvatars])
+
   const { pullDistance, status, pullStyle } = usePullToRefresh({
     onRefresh: async () => {
       reset()
+      fetchedUsersRef.current.clear()
       await fetchFirstPage()
     },
   })
 
-  const navigateToTopic = (topicId: number, replyFloor?: number) => {
+  const navigateToTopic = useCallback((topicId: number, replyFloor?: number) => {
     navigate(`/topic/${topicId}`, {
       state: replyFloor ? { scrollToFloor: replyFloor } : undefined,
     })
-  }
+  }, [navigate])
 
   const handleItemClick = (notif: V2Notification, e: React.MouseEvent) => {
-    // Check if clicked on an anchor tag inside the notification
+    // Check if clicked on an anchor tag inside the notification HTML
     const target = e.target as HTMLElement
     const anchor = target.closest('a')
     if (anchor) {
@@ -90,11 +131,20 @@ export default function Notifications() {
       }
     }
 
-    // Clicking the whole item navigates to the topic
+    // Clicking outside any link — navigate to the topic
     const parsed = parseNotification(notif.payload_rendered || notif.text || '')
     if (parsed) {
       navigateToTopic(parsed.topicId, parsed.replyFloor)
     }
+  }
+
+  const getAvatar = (notif: V2Notification): string => {
+    const m = notif.member
+    if (!m) return ''
+    // Try the notification member's own fields first, then the fetched map
+    return fixAvatarUrl(m.avatar_normal || m.avatar_mini || m.avatar_large || m.avatar)
+      || avatarMap[m.username]
+      || ''
   }
 
   if (!isLoggedIn) {
@@ -135,15 +185,20 @@ export default function Notifications() {
                 onClick={(e) => handleItemClick(notif, e)}
               >
                 {notif.member && (
-                  <div className={styles.itemAvatar}>
-                    <img
-                      src={fixAvatarUrl(notif.member.avatar_normal || notif.member.avatar_mini || notif.member.avatar_large || notif.member.avatar)}
-                      alt={notif.member.username}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        navigate(`/member/${notif.member.username}`)
-                      }}
-                    />
+                  <div
+                    className={styles.itemAvatar}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      navigate(`/member/${notif.member.username}`)
+                    }}
+                  >
+                    {getAvatar(notif) ? (
+                      <img src={getAvatar(notif)} alt={notif.member.username} />
+                    ) : (
+                      <span className={styles.avatarPlaceholder}>
+                        {notif.member.username.charAt(0).toUpperCase()}
+                      </span>
+                    )}
                   </div>
                 )}
                 <div className={styles.itemBody}>
