@@ -194,10 +194,12 @@ test.describe('Notifications Page', () => {
     await expect(page).toHaveURL(/\/topic\/999888/, { timeout: 5000 })
   })
 
-  test('clicking member link navigates to member page', async ({ page }) => {
+  test('clicking member link in notification text navigates to topic (not member page)', async ({ page }) => {
     await setupMockRoutes(page)
     await loginAndGoToNotifications(page)
     await page.locator('[class*="itemText"] a[href*="/member/"]').first().click()
-    await expect(page).toHaveURL(/\/member\/replyer/, { timeout: 5000 })
+    // Member links in notification text should navigate to the topic, not the member page
+    // (avatar click provides member page navigation)
+    await expect(page).toHaveURL(/\/topic\/999888/, { timeout: 5000 })
   })
 })

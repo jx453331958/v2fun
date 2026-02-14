@@ -114,24 +114,22 @@ export default function Notifications() {
   }, [navigate])
 
   const handleItemClick = (notif: V2Notification, e: React.MouseEvent) => {
-    // Check if clicked on an anchor tag inside the notification HTML
+    // Check if clicked on a topic link inside the notification HTML
     const target = e.target as HTMLElement
     const anchor = target.closest('a')
     if (anchor) {
       e.preventDefault()
       const href = anchor.getAttribute('href') || ''
       const parsed = parseNotificationLink(href)
-      if (parsed) {
-        if (parsed.type === 'topic') {
-          navigateToTopic(parsed.topicId, parsed.replyFloor)
-        } else if (parsed.type === 'member') {
-          navigate(`/member/${parsed.username}`)
-        }
+      if (parsed && parsed.type === 'topic') {
+        navigateToTopic(parsed.topicId, parsed.replyFloor)
         return
       }
+      // Member links and other links fall through to topic navigation below
+      // (avatar click handler already provides member page navigation)
     }
 
-    // Clicking outside any link — navigate to the topic
+    // Navigate to the topic referenced in this notification
     const parsed = parseNotification(notif.payload_rendered || notif.text || '')
     if (parsed) {
       navigateToTopic(parsed.topicId, parsed.replyFloor)
