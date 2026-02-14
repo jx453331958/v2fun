@@ -42,14 +42,12 @@ is_port_used() {
   fi
 }
 
-# 从 3210 开始找一个未占用的端口
+# 随机选一个未占用的端口（8000-60000）
 find_free_port() {
-  local port=3210
-  while is_port_used "$port"; do
-    port=$((port + RANDOM % 10 + 1))
-    if [ "$port" -gt 65535 ]; then
-      port=$((RANDOM % 10000 + 10000))
-    fi
+  local port
+  while true; do
+    port=$((RANDOM % 52001 + 8000))
+    is_port_used "$port" || break
   done
   echo "$port"
 }
