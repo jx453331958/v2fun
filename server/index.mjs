@@ -214,24 +214,43 @@ function getStoredCookie() {
   }
 }
 
+/** Build Cookie header: if user pasted raw value, wrap it; if full string, use as-is */
+function buildCookieHeader(cookie) {
+  // If it looks like a full cookie string (contains = with key names), use directly
+  if (cookie.includes('=')) return cookie
+  // Otherwise treat as bare PB3_SESSION value
+  return `PB3_SESSION=${cookie}`
+}
+
 async function fetchOnceToken(cookie, topicId) {
   const url = `https://www.v2ex.com/t/${topicId}`
+  const cookieHeader = buildCookieHeader(cookie)
   const res = await fetch(url, {
     headers: {
-      'Cookie': `PB3_SESSION=${cookie}`,
+      'Cookie': cookieHeader,
       'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
     },
     redirect: 'manual',
   })
-  // 302 or non-200 means cookie expired / invalid
   if (res.status >= 300) {
-    throw new Error('cookie_expired')
+    const location = res.headers.get('location') || ''
+    console.error(`[fetchOnce] ${url} → ${res.status}, location: ${location}`)
+    const err = new Error('cookie_expired')
+    err.detail = `V2EX 返回 ${res.status}${location ? ' → ' + location : ''}，Cookie 可能无效`
+    throw err
   }
   const html = await res.text()
-  // V2EX embeds once token in forms and AJAX URLs
-  const match = html.match(/once=(\d+)/) || html.match(/name="once" value="(\d+)"/)
+  // V2EX embeds once in: href="...?once=12345", value="12345" name="once", /once/12345
+  const match = html.match(/(?:once=|once\/|"once"\s*(?:value|:)\s*"?)(\d{5,})/)
   if (!match) {
-    throw new Error('cookie_expired')
+    // Log a snippet to help debug
+    const snippet = html.substring(0, 500).replace(/\n/g, ' ')
+    console.error(`[fetchOnce] once not found in HTML (${html.length} bytes), snippet: ${snippet}`)
+    const err = new Error('cookie_expired')
+    err.detail = html.includes('/signin') ? 'V2EX 返回了登录页，Cookie 无效' : '页面中未找到 once token，请尝试粘贴完整 Cookie'
+    throw err
   }
   return match[1]
 }
@@ -239,7 +258,7 @@ async function fetchOnceToken(cookie, topicId) {
 app.post('/auth/cookie', express.json({ limit: '4kb' }), (req, res) => {
   if (!verifySession(req)) return res.status(401).json({ error: '未登录' })
   const { cookie } = req.body
-  if (!cookie || typeof cookie !== 'string' || cookie.length > 1024) {
+  if (!cookie || typeof cookie !== 'string' || cookie.length > 4096) {
     return res.status(400).json({ error: 'Invalid cookie' })
   }
   try {
@@ -294,7 +313,7 @@ app.post('/web/reply', express.json({ limit: '16kb' }), async (req, res) => {
     const postRes = await fetch(`https://www.v2ex.com/t/${topicId}`, {
       method: 'POST',
       headers: {
-        'Cookie': `PB3_SESSION=${cookie}`,
+        'Cookie': buildCookieHeader(cookie),
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
         'Content-Type': 'application/x-www-form-urlencoded',
         'Origin': 'https://www.v2ex.com',
@@ -310,8 +329,9 @@ app.post('/web/reply', express.json({ limit: '16kb' }), async (req, res) => {
     res.json({ success: false, error: 'reply_failed', message: '回复失败，请稍后重试' })
   } catch (err) {
     if (err.message === 'cookie_expired') {
-      return res.json({ success: false, error: 'cookie_expired', message: 'Cookie 已过期，请重新设置' })
+      return res.json({ success: false, error: 'cookie_expired', message: err.detail || 'Cookie 已过期，请重新设置' })
     }
+    console.error('[web]', err)
     res.json({ success: false, error: 'unknown', message: '操作失败' })
   }
 })
@@ -327,7 +347,7 @@ app.post('/web/thank/topic/:id', express.json({ limit: '1kb' }), async (req, res
     const thankRes = await fetch(`https://www.v2ex.com/thank/topic/${topicId}?once=${once}`, {
       method: 'POST',
       headers: {
-        'Cookie': `PB3_SESSION=${cookie}`,
+        'Cookie': buildCookieHeader(cookie),
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
         'Referer': `https://www.v2ex.com/t/${topicId}`,
         'X-Requested-With': 'XMLHttpRequest',
@@ -340,8 +360,9 @@ app.post('/web/thank/topic/:id', express.json({ limit: '1kb' }), async (req, res
     res.json({ success: false, error: 'thank_failed', message: '感谢失败' })
   } catch (err) {
     if (err.message === 'cookie_expired') {
-      return res.json({ success: false, error: 'cookie_expired', message: 'Cookie 已过期，请重新设置' })
+      return res.json({ success: false, error: 'cookie_expired', message: err.detail || 'Cookie 已过期，请重新设置' })
     }
+    console.error('[web]', err)
     res.json({ success: false, error: 'unknown', message: '操作失败' })
   }
 })
@@ -360,7 +381,7 @@ app.post('/web/thank/reply/:id', express.json({ limit: '1kb' }), async (req, res
     const thankRes = await fetch(`https://www.v2ex.com/thank/reply/${replyId}?once=${once}`, {
       method: 'POST',
       headers: {
-        'Cookie': `PB3_SESSION=${cookie}`,
+        'Cookie': buildCookieHeader(cookie),
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
         'Referer': `https://www.v2ex.com/t/${topicId}`,
         'X-Requested-With': 'XMLHttpRequest',
@@ -373,8 +394,9 @@ app.post('/web/thank/reply/:id', express.json({ limit: '1kb' }), async (req, res
     res.json({ success: false, error: 'thank_failed', message: '感谢失败' })
   } catch (err) {
     if (err.message === 'cookie_expired') {
-      return res.json({ success: false, error: 'cookie_expired', message: 'Cookie 已过期，请重新设置' })
+      return res.json({ success: false, error: 'cookie_expired', message: err.detail || 'Cookie 已过期，请重新设置' })
     }
+    console.error('[web]', err)
     res.json({ success: false, error: 'unknown', message: '操作失败' })
   }
 })

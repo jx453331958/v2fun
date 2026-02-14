@@ -141,8 +141,8 @@ export default function Profile() {
           </div>
           <textarea
             className={styles.cookieInput}
-            rows={2}
-            placeholder="粘贴 PB3_SESSION 的值..."
+            rows={3}
+            placeholder="粘贴完整的 Cookie 字符串..."
             value={cookieInput}
             onChange={e => { setCookieInput(e.target.value); setCookieMsg('') }}
           />
@@ -155,7 +155,7 @@ export default function Profile() {
           </button>
           {cookieMsg && <p className={styles.cookieMsg}>{cookieMsg}</p>}
           <p className={styles.cookieHint}>
-            在浏览器登录 V2EX → 开发者工具 → Application → Cookies → 复制 PB3_SESSION 的值。设置后可在 App 内直接回复和感谢。
+            在浏览器登录 V2EX → 打开任意主题页 → 开发者工具 → Network → 点击任意请求 → 复制 Request Headers 中的 Cookie 值。设置后可在 App 内直接回复和感谢。
           </p>
         </div>
 
