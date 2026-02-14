@@ -21,7 +21,7 @@ export function usePullToRefresh({ onRefresh }: UsePullToRefreshOptions): UsePul
   const [status, setStatus] = useState<PullStatus>('idle')
   const startYRef = useRef(0)
   const pullingRef = useRef(false)
-  const doneTimerRef = useRef<ReturnType<typeof setTimeout>>()
+  const doneTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   const handleRefresh = useCallback(async () => {
     setStatus('refreshing')
