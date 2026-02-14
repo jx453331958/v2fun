@@ -8,7 +8,7 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3210
-      - V2FUN_SECRET=changeme  # IMPORTANT: change to any random string, keeps login across redeployments
+      # - V2FUN_SECRET=your-random-string  # Optional: set to keep login across redeployments
     restart: unless-stopped
 
 volumes:
