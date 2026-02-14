@@ -125,11 +125,13 @@ export function usePullToRefresh({ onRefresh }: UsePullToRefreshOptions): UsePul
 
   const pulling = pullingRef.current && lockedRef.current
 
-  const pullStyle: CSSProperties = {
-    transform: `translateY(${pullDistance}px)`,
-    transition: pulling ? 'none' : 'transform 0.4s cubic-bezier(0.33, 1, 0.68, 1)',
-    willChange: pulling ? 'transform' : undefined,
-  }
+  const pullStyle: CSSProperties = pullDistance > 0
+    ? {
+        transform: `translateY(${pullDistance}px)`,
+        transition: pulling ? 'none' : 'transform 0.4s cubic-bezier(0.33, 1, 0.68, 1)',
+        willChange: pulling ? 'transform' : undefined,
+      }
+    : {}
 
   return { pullDistance, status, pullStyle }
 }
