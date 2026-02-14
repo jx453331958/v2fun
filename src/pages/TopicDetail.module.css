@@ -99,6 +99,7 @@
 .repliesSection {
   background: var(--bg-secondary);
   margin-top: 6px;
+  padding-bottom: calc(60px + var(--tab-height) + var(--safe-bottom));
 }
 
 .noReplies {

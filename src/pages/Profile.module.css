@@ -1,5 +1,5 @@
 .page {
-  min-height: 100dvh;
+  min-height: calc(100dvh - var(--tab-height) - var(--safe-bottom));
   background: var(--bg-primary);
 }
 
