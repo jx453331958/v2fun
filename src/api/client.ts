@@ -2,18 +2,10 @@ import type { V2Topic, V2Reply, V2Member, V2Node, V2Notification, V2Token } from
 
 const BASE = '/api'
 
-function getToken(): string | null {
-  return localStorage.getItem('v2fun_token')
-}
-
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const token = getToken()
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options?.headers as Record<string, string>),
-  }
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`
   }
   const res = await fetch(`${BASE}${path}`, { ...options, headers })
   if (!res.ok) {
@@ -44,7 +36,7 @@ export const v1 = {
   memberInfo: (username: string) => request<V2Member>('/members/show.json?username=' + username),
 }
 
-// V2 API - authenticated endpoints
+// V2 API - authenticated via server-injected cookie
 interface V2Result<T> {
   success: boolean
   message?: string
@@ -82,23 +74,6 @@ interface WebResult {
 }
 
 export const web = {
-  getCookieStatus: () =>
-    fetch('/auth/cookie', { credentials: 'same-origin' }).then(r => r.json()) as Promise<{ hasCookie: boolean }>,
-
-  saveCookie: (cookie: string) =>
-    fetch('/auth/cookie', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'same-origin',
-      body: JSON.stringify({ cookie }),
-    }).then(r => r.json()) as Promise<WebResult>,
-
-  clearCookie: () =>
-    fetch('/auth/cookie', {
-      method: 'DELETE',
-      credentials: 'same-origin',
-    }).then(r => r.json()) as Promise<WebResult>,
-
   reply: (topicId: number, content: string) =>
     fetch('/web/reply', {
       method: 'POST',

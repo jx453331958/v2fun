@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { formatDistanceToNow } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
@@ -7,11 +6,8 @@ import Loading from '../components/Loading'
 import styles from './Profile.module.css'
 
 export default function Profile() {
-  const { member, loading, logout, isLoggedIn, hasCookie, saveCookie, clearCookie } = useAuth()
+  const { member, loading, logout, isLoggedIn } = useAuth()
   const navigate = useNavigate()
-  const [cookieInput, setCookieInput] = useState('')
-  const [cookieSaving, setCookieSaving] = useState(false)
-  const [cookieMsg, setCookieMsg] = useState('')
 
   if (loading) return <Loading />
 
@@ -24,27 +20,6 @@ export default function Profile() {
     locale: zhCN,
     addSuffix: true,
   })
-
-  const handleSaveCookie = async () => {
-    const value = cookieInput.trim()
-    if (!value) return
-    setCookieSaving(true)
-    setCookieMsg('')
-    const ok = await saveCookie(value)
-    setCookieSaving(false)
-    if (ok) {
-      setCookieInput('')
-      setCookieMsg('已保存')
-    } else {
-      setCookieMsg('保存失败')
-    }
-  }
-
-  const handleClearCookie = async () => {
-    if (!confirm('确定要清除 Cookie 吗？')) return
-    await clearCookie()
-    setCookieMsg('已清除')
-  }
 
   const handleLogout = () => {
     if (confirm('确定要退出登录吗？')) {
@@ -126,36 +101,6 @@ export default function Profile() {
               <polyline points="9 18 15 12 9 6" />
             </svg>
           </button>
-        </div>
-
-        <div className={styles.section}>
-          <h3 className={styles.sectionTitle}>V2EX Cookie</h3>
-          <div className={styles.cookieStatus}>
-            <span className={hasCookie ? styles.statusOn : styles.statusOff}>
-              {hasCookie ? '已设置' : '未设置'}
-            </span>
-            {hasCookie && (
-              <button className={styles.clearBtn} onClick={handleClearCookie}>清除</button>
-            )}
-          </div>
-          <textarea
-            className={styles.cookieInput}
-            rows={3}
-            placeholder="粘贴完整的 Cookie 字符串..."
-            value={cookieInput}
-            onChange={e => { setCookieInput(e.target.value); setCookieMsg('') }}
-          />
-          <button
-            className={styles.saveBtn}
-            onClick={handleSaveCookie}
-            disabled={cookieSaving || !cookieInput.trim()}
-          >
-            {cookieSaving ? '保存中...' : '保存'}
-          </button>
-          {cookieMsg && <p className={styles.cookieMsg}>{cookieMsg}</p>}
-          <p className={styles.cookieHint}>
-            在浏览器登录 V2EX → 打开任意主题页 → 开发者工具 → Network → 点击任意请求 → 复制 Request Headers 中的 Cookie 值。设置后可在 App 内直接回复和感谢。
-          </p>
         </div>
 
         <div className={styles.section}>

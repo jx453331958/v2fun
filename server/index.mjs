@@ -13,8 +13,7 @@ const PORT = process.env.PORT || 3210
 // ── Persistent data (mount as Docker volume) ─────────────
 const DATA_DIR = path.join(__dirname, '..', 'data')
 const SECRET_FILE = path.join(DATA_DIR, '.secret')
-const AUTH_FILE = path.join(DATA_DIR, 'auth.enc')
-const COOKIE_FILE = path.join(DATA_DIR, 'cookie.enc')
+const AUTH_FILE = path.join(DATA_DIR, 'auth.json')
 
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true })
@@ -81,19 +80,106 @@ function setSessionCookie(res, value, maxAge = 365 * 24 * 3600) {
   res.setHeader('Set-Cookie', parts.join('; '))
 }
 
+// ── Auth data helpers ────────────────────────────────────
+// AUTH_FILE stores: { session, cookie (encrypted base64), member }
+
+function readAuthData() {
+  try {
+    if (!fs.existsSync(AUTH_FILE)) return null
+    return JSON.parse(fs.readFileSync(AUTH_FILE, 'utf-8'))
+  } catch {
+    return null
+  }
+}
+
+function writeAuthData(data) {
+  fs.writeFileSync(AUTH_FILE, JSON.stringify(data), { encoding: 'utf-8', mode: 0o600 })
+}
+
 /** Verify session cookie and return true if valid */
 function verifySession(req) {
   const sessionToken = parseCookie(req.headers.cookie, 'v2fun_session')
   if (!sessionToken) return false
   try {
-    if (!fs.existsSync(AUTH_FILE)) return false
-    const data = JSON.parse(fs.readFileSync(AUTH_FILE, 'utf-8'))
+    const data = readAuthData()
+    if (!data) return false
     const expected = Buffer.from(data.session, 'utf-8')
     const actual = Buffer.from(hmac(sessionToken), 'utf-8')
     return expected.length === actual.length && crypto.timingSafeEqual(expected, actual)
   } catch {
     return false
   }
+}
+
+/** Get decrypted V2EX cookie from AUTH_FILE */
+function getStoredCookie() {
+  try {
+    const data = readAuthData()
+    if (!data || !data.cookie) return null
+    return decrypt(Buffer.from(data.cookie, 'base64'))
+  } catch {
+    return null
+  }
+}
+
+/** Build Cookie header: supports full cookie string or bare PB3_SESSION value */
+function buildCookieHeader(cookie) {
+  if (cookie.includes('=')) return cookie
+  return `PB3_SESSION=${cookie}`
+}
+
+const V2EX_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+
+/** Verify V2EX cookie by fetching a page, return username if valid */
+async function verifyV2exCookie(cookieStr) {
+  const res = await fetch('https://www.v2ex.com/settings', {
+    headers: {
+      'Cookie': buildCookieHeader(cookieStr),
+      'User-Agent': V2EX_UA,
+      'Accept': 'text/html,application/xhtml+xml',
+    },
+    redirect: 'manual',
+  })
+  // 302 means not logged in (redirects to /signin)
+  if (res.status >= 300) return null
+  const html = await res.text()
+  // Settings page has: <a href="/member/username">
+  // or the nav bar: <a href="/member/xxx" class="top">
+  const match = html.match(/href="\/member\/([^"]+)"/)
+  if (!match) return null
+  return match[1]
+}
+
+/** Fetch once token from topic page */
+async function fetchOnceToken(cookie, topicId) {
+  const url = `https://www.v2ex.com/t/${topicId}`
+  const cookieHeader = buildCookieHeader(cookie)
+  const res = await fetch(url, {
+    headers: {
+      'Cookie': cookieHeader,
+      'User-Agent': V2EX_UA,
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+    },
+    redirect: 'manual',
+  })
+  if (res.status >= 300) {
+    const location = res.headers.get('location') || ''
+    console.error(`[fetchOnce] ${url} → ${res.status}, location: ${location}`)
+    const err = new Error('cookie_expired')
+    err.detail = `V2EX 返回 ${res.status}${location ? ' → ' + location : ''}，Cookie 可能无效`
+    throw err
+  }
+  const html = await res.text()
+  const match = html.match(/(?:once=|once\/|"once"\s*(?:value|:)\s*"?)(\d{5,})/)
+  if (!match) {
+    const snippet = html.substring(0, 500).replace(/\n/g, ' ')
+    console.error(`[fetchOnce] once not found in HTML (${html.length} bytes), snippet: ${snippet}`)
+    const err = new Error('cookie_expired')
+    err.detail = html.includes('/signin') ? 'V2EX 返回了登录页，Cookie 无效' : '页面中未找到 once token'
+    throw err
+  }
+  return match[1]
 }
 
 // ── Security hardening ────────────────────────────────────
@@ -134,8 +220,6 @@ const authLimiter = rateLimit({
 app.use('/auth', authLimiter)
 
 // ── CORS preflight — must come before proxy ───────────────
-// No wildcard — frontend and API are same-origin in production.
-// Only needed for dev with Vite proxy (which handles CORS itself).
 app.use((req, res, next) => {
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS')
@@ -146,140 +230,61 @@ app.use((req, res, next) => {
   next()
 })
 
-// ── Secure token persistence ──────────────────────────────
-// - Token encrypted at rest with AES-256-GCM
-// - Retrieval requires a valid HttpOnly session cookie
-// - Cookie verified via HMAC-SHA256 (timing-safe comparison)
+// ── Auth: cookie-based login ────────────────────────────────
+// User provides V2EX cookie string → server verifies, encrypts, stores.
+// All subsequent V2EX requests use this cookie.
 
-app.post('/auth/login', express.json({ limit: '2kb' }), (req, res) => {
-  const { token } = req.body
-  if (!token || typeof token !== 'string' || token.length > 512) {
-    return res.status(400).json({ error: 'Invalid token' })
-  }
-  try {
-    const sessionToken = crypto.randomBytes(32).toString('hex')
-    const encryptedToken = encrypt(token).toString('base64')
-    const data = { token: encryptedToken, session: hmac(sessionToken) }
-    fs.writeFileSync(AUTH_FILE, JSON.stringify(data), { encoding: 'utf-8', mode: 0o600 })
-    setSessionCookie(res, sessionToken)
-    res.json({ success: true })
-  } catch {
-    res.status(500).json({ error: 'Failed to save' })
-  }
-})
-
-app.get('/auth/session', (req, res) => {
-  const sessionToken = parseCookie(req.headers.cookie, 'v2fun_session')
-  if (!sessionToken) return res.json({ token: null })
-
-  try {
-    if (!fs.existsSync(AUTH_FILE)) return res.json({ token: null })
-    const data = JSON.parse(fs.readFileSync(AUTH_FILE, 'utf-8'))
-
-    // Timing-safe comparison to prevent timing attacks
-    const expected = Buffer.from(data.session, 'utf-8')
-    const actual = Buffer.from(hmac(sessionToken), 'utf-8')
-    if (expected.length !== actual.length || !crypto.timingSafeEqual(expected, actual)) {
-      return res.json({ token: null })
-    }
-
-    const token = decrypt(Buffer.from(data.token, 'base64'))
-    res.json({ token })
-  } catch {
-    res.json({ token: null })
-  }
-})
-
-app.post('/auth/logout', (req, res) => {
-  // Only allow logout if the requester holds a valid session
-  if (verifySession(req)) {
-    try {
-      if (fs.existsSync(AUTH_FILE)) fs.unlinkSync(AUTH_FILE)
-      if (fs.existsSync(COOKIE_FILE)) fs.unlinkSync(COOKIE_FILE)
-    } catch { /* ignore */ }
-  }
-  setSessionCookie(res, '', 0)
-  res.json({ success: true })
-})
-
-// ── V2EX Cookie management ──────────────────────────────────
-
-function getStoredCookie() {
-  if (!fs.existsSync(COOKIE_FILE)) return null
-  try {
-    const buf = fs.readFileSync(COOKIE_FILE)
-    return decrypt(buf)
-  } catch {
-    return null
-  }
-}
-
-/** Build Cookie header: if user pasted raw value, wrap it; if full string, use as-is */
-function buildCookieHeader(cookie) {
-  // If it looks like a full cookie string (contains = with key names), use directly
-  if (cookie.includes('=')) return cookie
-  // Otherwise treat as bare PB3_SESSION value
-  return `PB3_SESSION=${cookie}`
-}
-
-async function fetchOnceToken(cookie, topicId) {
-  const url = `https://www.v2ex.com/t/${topicId}`
-  const cookieHeader = buildCookieHeader(cookie)
-  const res = await fetch(url, {
-    headers: {
-      'Cookie': cookieHeader,
-      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-    },
-    redirect: 'manual',
-  })
-  if (res.status >= 300) {
-    const location = res.headers.get('location') || ''
-    console.error(`[fetchOnce] ${url} → ${res.status}, location: ${location}`)
-    const err = new Error('cookie_expired')
-    err.detail = `V2EX 返回 ${res.status}${location ? ' → ' + location : ''}，Cookie 可能无效`
-    throw err
-  }
-  const html = await res.text()
-  // V2EX embeds once in: href="...?once=12345", value="12345" name="once", /once/12345
-  const match = html.match(/(?:once=|once\/|"once"\s*(?:value|:)\s*"?)(\d{5,})/)
-  if (!match) {
-    // Log a snippet to help debug
-    const snippet = html.substring(0, 500).replace(/\n/g, ' ')
-    console.error(`[fetchOnce] once not found in HTML (${html.length} bytes), snippet: ${snippet}`)
-    const err = new Error('cookie_expired')
-    err.detail = html.includes('/signin') ? 'V2EX 返回了登录页，Cookie 无效' : '页面中未找到 once token，请尝试粘贴完整 Cookie'
-    throw err
-  }
-  return match[1]
-}
-
-app.post('/auth/cookie', express.json({ limit: '4kb' }), (req, res) => {
-  if (!verifySession(req)) return res.status(401).json({ error: '未登录' })
+app.post('/auth/login', express.json({ limit: '8kb' }), async (req, res) => {
   const { cookie } = req.body
   if (!cookie || typeof cookie !== 'string' || cookie.length > 4096) {
     return res.status(400).json({ error: 'Invalid cookie' })
   }
   try {
-    const buf = encrypt(cookie)
-    fs.writeFileSync(COOKIE_FILE, buf, { mode: 0o600 })
-    res.json({ success: true })
-  } catch {
-    res.status(500).json({ error: 'Failed to save cookie' })
+    // Verify cookie against V2EX
+    const username = await verifyV2exCookie(cookie)
+    if (!username) {
+      return res.status(401).json({ error: 'Cookie 无效或已过期' })
+    }
+
+    // Fetch member info via public v1 API
+    const memberRes = await fetch(`https://www.v2ex.com/api/members/show.json?username=${encodeURIComponent(username)}`, {
+      headers: { 'User-Agent': 'V2Fun/1.0' },
+    })
+    const member = memberRes.ok ? await memberRes.json() : { username }
+
+    // Create session
+    const sessionToken = crypto.randomBytes(32).toString('hex')
+    const encryptedCookie = encrypt(cookie).toString('base64')
+    writeAuthData({
+      session: hmac(sessionToken),
+      cookie: encryptedCookie,
+      member,
+    })
+    setSessionCookie(res, sessionToken)
+    res.json({ success: true, member })
+  } catch (err) {
+    console.error('[auth/login]', err)
+    res.status(500).json({ error: '登录失败，请重试' })
   }
 })
 
-app.get('/auth/cookie', (req, res) => {
-  if (!verifySession(req)) return res.json({ hasCookie: false })
-  res.json({ hasCookie: fs.existsSync(COOKIE_FILE) })
+app.get('/auth/session', (req, res) => {
+  if (!verifySession(req)) return res.json({ member: null })
+  try {
+    const data = readAuthData()
+    res.json({ member: data?.member || null })
+  } catch {
+    res.json({ member: null })
+  }
 })
 
-app.delete('/auth/cookie', (req, res) => {
-  if (!verifySession(req)) return res.status(401).json({ error: '未登录' })
-  try {
-    if (fs.existsSync(COOKIE_FILE)) fs.unlinkSync(COOKIE_FILE)
-  } catch { /* ignore */ }
+app.post('/auth/logout', (req, res) => {
+  if (verifySession(req)) {
+    try {
+      if (fs.existsSync(AUTH_FILE)) fs.unlinkSync(AUTH_FILE)
+    } catch { /* ignore */ }
+  }
+  setSessionCookie(res, '', 0)
   res.json({ success: true })
 })
 
@@ -314,7 +319,7 @@ app.post('/web/reply', express.json({ limit: '16kb' }), async (req, res) => {
       method: 'POST',
       headers: {
         'Cookie': buildCookieHeader(cookie),
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+        'User-Agent': V2EX_UA,
         'Content-Type': 'application/x-www-form-urlencoded',
         'Origin': 'https://www.v2ex.com',
         'Referer': `https://www.v2ex.com/t/${topicId}`,
@@ -329,7 +334,7 @@ app.post('/web/reply', express.json({ limit: '16kb' }), async (req, res) => {
     res.json({ success: false, error: 'reply_failed', message: '回复失败，请稍后重试' })
   } catch (err) {
     if (err.message === 'cookie_expired') {
-      return res.json({ success: false, error: 'cookie_expired', message: err.detail || 'Cookie 已过期，请重新设置' })
+      return res.json({ success: false, error: 'cookie_expired', message: err.detail || 'Cookie 已过期，请重新登录' })
     }
     console.error('[web]', err)
     res.json({ success: false, error: 'unknown', message: '操作失败' })
@@ -348,7 +353,7 @@ app.post('/web/thank/topic/:id', express.json({ limit: '1kb' }), async (req, res
       method: 'POST',
       headers: {
         'Cookie': buildCookieHeader(cookie),
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+        'User-Agent': V2EX_UA,
         'Referer': `https://www.v2ex.com/t/${topicId}`,
         'X-Requested-With': 'XMLHttpRequest',
       },
@@ -360,7 +365,7 @@ app.post('/web/thank/topic/:id', express.json({ limit: '1kb' }), async (req, res
     res.json({ success: false, error: 'thank_failed', message: '感谢失败' })
   } catch (err) {
     if (err.message === 'cookie_expired') {
-      return res.json({ success: false, error: 'cookie_expired', message: err.detail || 'Cookie 已过期，请重新设置' })
+      return res.json({ success: false, error: 'cookie_expired', message: err.detail || 'Cookie 已过期，请重新登录' })
     }
     console.error('[web]', err)
     res.json({ success: false, error: 'unknown', message: '操作失败' })
@@ -382,7 +387,7 @@ app.post('/web/thank/reply/:id', express.json({ limit: '1kb' }), async (req, res
       method: 'POST',
       headers: {
         'Cookie': buildCookieHeader(cookie),
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+        'User-Agent': V2EX_UA,
         'Referer': `https://www.v2ex.com/t/${topicId}`,
         'X-Requested-With': 'XMLHttpRequest',
       },
@@ -394,7 +399,7 @@ app.post('/web/thank/reply/:id', express.json({ limit: '1kb' }), async (req, res
     res.json({ success: false, error: 'thank_failed', message: '感谢失败' })
   } catch (err) {
     if (err.message === 'cookie_expired') {
-      return res.json({ success: false, error: 'cookie_expired', message: err.detail || 'Cookie 已过期，请重新设置' })
+      return res.json({ success: false, error: 'cookie_expired', message: err.detail || 'Cookie 已过期，请重新登录' })
     }
     console.error('[web]', err)
     res.json({ success: false, error: 'unknown', message: '操作失败' })
@@ -402,9 +407,8 @@ app.post('/web/thank/reply/:id', express.json({ limit: '1kb' }), async (req, res
 })
 
 // ── Proxy /api/* → https://www.v2ex.com/api/* ─────────────
-// IMPORTANT: no body-parsing middleware before this — raw stream forwarding
-// NOTE: use pathFilter instead of app.use('/api', ...) so that the full
-//       request path (including /api prefix) is preserved when forwarding.
+// For v2 API paths, inject stored V2EX cookie for authentication.
+// For v1 API paths (public), pass through without auth.
 const v2exProxy = createProxyMiddleware({
   target: 'https://www.v2ex.com',
   pathFilter: (path) => path === '/api' || path.startsWith('/api/'),
@@ -417,10 +421,12 @@ const v2exProxy = createProxyMiddleware({
   },
   on: {
     proxyReq: (proxyReq, req) => {
-      // Forward auth token
-      const auth = req.headers['authorization']
-      if (auth) {
-        proxyReq.setHeader('Authorization', auth)
+      // For v2 API, inject stored cookie for auth
+      if (req.url.startsWith('/api/v2/')) {
+        const cookie = getStoredCookie()
+        if (cookie) {
+          proxyReq.setHeader('Cookie', buildCookieHeader(cookie))
+        }
       }
       // Ensure content-type is forwarded for POST/PUT
       const ct = req.headers['content-type']

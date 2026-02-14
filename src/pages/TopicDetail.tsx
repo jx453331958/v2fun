@@ -19,7 +19,7 @@ const PAGE_SIZE = 100
 export default function TopicDetail() {
   const { id } = useParams<{ id: string }>()
   const location = useLocation()
-  const { hasCookie } = useAuth()
+  const { isLoggedIn } = useAuth()
   const [topic, setTopic] = useState<V2Topic | null>(null)
   const [firstPageReplies, setFirstPageReplies] = useState<V2Reply[]>([])
   const [loading, setLoading] = useState(true)
@@ -147,7 +147,7 @@ export default function TopicDetail() {
 
   const handleThankTopic = async () => {
     if (!id || thankingTopic || thankedTopic) return
-    if (!hasCookie) {
+    if (!isLoggedIn) {
       openInV2EX()
       return
     }
@@ -247,7 +247,7 @@ export default function TopicDetail() {
                   floor={i + 1}
                   topicId={parseInt(id!)}
                   highlight={highlightFloor === i + 1}
-                  hasCookie={hasCookie}
+                  hasCookie={isLoggedIn}
                 />
               ))}
               <div ref={sentinelRef} />
@@ -261,7 +261,7 @@ export default function TopicDetail() {
       </div>
 
       <div className={styles.replyBar}>
-        {hasCookie ? (
+        {isLoggedIn ? (
           <div className={styles.replyInputRow}>
             <textarea
               ref={textareaRef}
