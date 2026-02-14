@@ -1,10 +1,9 @@
-import { Outlet, NavLink, useNavigate } from 'react-router-dom'
+import { Outlet, NavLink } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import styles from './Layout.module.css'
 
 export default function Layout() {
   const { isLoggedIn } = useAuth()
-  const navigate = useNavigate()
 
   return (
     <div className={styles.layout}>
@@ -30,7 +29,7 @@ export default function Layout() {
 
         <button
           className={styles.createBtn}
-          onClick={() => navigate(isLoggedIn ? '/create' : '/login')}
+          onClick={() => window.open('https://www.v2ex.com/new', '_blank')}
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
             <line x1="12" y1="5" x2="12" y2="19" />

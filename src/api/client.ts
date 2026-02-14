@@ -63,26 +63,13 @@ export const v2 = {
 
   nodeTopics: (nodeName: string, page = 1) =>
     request<V2Result<V2Topic[]>>(`/v2/nodes/${nodeName}/topics?p=${page}`),
+}
 
-  createTopic: (data: { title: string; content: string; node_name: string; syntax?: string }) =>
-    request<V2Result<V2Topic>>('/v2/topics', {
-      method: 'POST',
-      body: JSON.stringify({ syntax: 'markdown', ...data }),
-    }),
+// V2EX web URL helpers (for actions that require web session)
+export function getTopicWebUrl(id: number) {
+  return `https://www.v2ex.com/t/${id}`
+}
 
-  replyTopic: (topicId: number, content: string) =>
-    request<V2Result<V2Reply>>(`/v2/topics/${topicId}/replies`, {
-      method: 'POST',
-      body: JSON.stringify({ content }),
-    }),
-
-  thankTopic: (topicId: number) =>
-    request<V2Result<null>>(`/v2/topics/${topicId}/thank`, {
-      method: 'POST',
-    }),
-
-  thankReply: (replyId: number) =>
-    request<V2Result<null>>(`/v2/replies/${replyId}/thank`, {
-      method: 'POST',
-    }),
+export function getNewTopicWebUrl() {
+  return 'https://www.v2ex.com/new'
 }

@@ -1,9 +1,8 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useLocation } from 'react-router-dom'
 import { formatDistanceToNow } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
-import { v1, v2 } from '../api/client'
-import { useAuth } from '../hooks/useAuth'
+import { v1, getTopicWebUrl } from '../api/client'
 import type { V2Topic, V2Reply } from '../types'
 import Header from '../components/Header'
 import ReplyItem from '../components/ReplyItem'
@@ -19,15 +18,10 @@ const PAGE_SIZE = 100
 export default function TopicDetail() {
   const { id } = useParams<{ id: string }>()
   const location = useLocation()
-  const { isLoggedIn } = useAuth()
   const [topic, setTopic] = useState<V2Topic | null>(null)
   const [firstPageReplies, setFirstPageReplies] = useState<V2Reply[]>([])
   const [loading, setLoading] = useState(true)
-  const [replyContent, setReplyContent] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-  const [thanked, setThanked] = useState(false)
   const [highlightFloor, setHighlightFloor] = useState<number | null>(null)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const scrollToFloor = (location.state as { scrollToFloor?: number } | null)?.scrollToFloor
 
@@ -114,63 +108,10 @@ export default function TopicDetail() {
     },
   })
 
-  const handleReply = async () => {
-    if (!replyContent.trim() || !id || submitting) return
-    setSubmitting(true)
-    try {
-      await v2.replyTopic(parseInt(id), replyContent)
-      setReplyContent('')
-      // Reload first page of replies
-      const r = await v1.replies(parseInt(id), 1)
-      setFirstPageReplies(r)
-      reset()
-      if (textareaRef.current) {
-        textareaRef.current.style.height = 'auto'
-      }
-    } catch (err) {
-      alert(err instanceof Error ? err.message : '回复失败，请稍后重试')
-    } finally {
-      setSubmitting(false)
-    }
+  const openInV2EX = () => {
+    if (!id) return
+    window.open(getTopicWebUrl(parseInt(id)), '_blank')
   }
-
-  const handleThankTopic = async () => {
-    if (thanked || !id) return
-    try {
-      await v2.thankTopic(parseInt(id))
-      setThanked(true)
-    } catch {
-      // ignore
-    }
-  }
-
-  const replyBarRef = useRef<HTMLDivElement>(null)
-
-  const handleTextareaInput = () => {
-    const el = textareaRef.current
-    if (el) {
-      el.style.height = 'auto'
-      el.style.height = Math.min(el.scrollHeight, 120) + 'px'
-    }
-  }
-
-  // Handle virtual keyboard on mobile — keep reply bar above keyboard
-  useEffect(() => {
-    const vv = window.visualViewport
-    if (!vv || !replyBarRef.current) return
-    const onResize = () => {
-      const bar = replyBarRef.current
-      if (!bar) return
-      const offset = window.innerHeight - vv.height - vv.offsetTop
-      bar.style.bottom = `${Math.max(0, offset)}px`
-    }
-    vv.addEventListener('resize', onResize)
-    vv.addEventListener('scroll', onResize)
-    return () => {
-      vv.removeEventListener('resize', onResize)
-      vv.removeEventListener('scroll', onResize)
-    }
-  }, [])
 
   if (loading && status === 'idle') {
     return (
@@ -229,10 +170,10 @@ export default function TopicDetail() {
 
           <div className={styles.topicActions}>
             <button
-              className={`${styles.actionBtn} ${thanked ? styles.thanked : ''}`}
-              onClick={handleThankTopic}
+              className={styles.actionBtn}
+              onClick={openInV2EX}
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill={thanked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
                 <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
               </svg>
               感谢
@@ -253,6 +194,7 @@ export default function TopicDetail() {
                   key={reply.id}
                   reply={reply}
                   floor={i + 1}
+                  topicId={parseInt(id!)}
                   highlight={highlightFloor === i + 1}
                 />
               ))}
@@ -266,33 +208,14 @@ export default function TopicDetail() {
         </div>
       </div>
 
-      {isLoggedIn && (
-        <div className={styles.replyBar} ref={replyBarRef}>
-          <div className={styles.replyInput}>
-            <textarea
-              ref={textareaRef}
-              value={replyContent}
-              onChange={(e) => setReplyContent(e.target.value)}
-              onInput={handleTextareaInput}
-              placeholder="写下你的回复..."
-              rows={1}
-            />
-            <button
-              className={styles.sendBtn}
-              disabled={!replyContent.trim() || submitting}
-              onClick={handleReply}
-            >
-              {submitting ? (
-                <div className={styles.sendSpinner} />
-              ) : (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-                </svg>
-              )}
-            </button>
-          </div>
-        </div>
-      )}
+      <div className={styles.replyBar}>
+        <button className={styles.replyWebBtn} onClick={openInV2EX}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" />
+          </svg>
+          在 V2EX 中回复
+        </button>
+      </div>
     </div>
   )
 }
