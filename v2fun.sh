@@ -29,6 +29,31 @@ get_ip() {
   hostname -I 2>/dev/null | awk '{print $1}' || echo "localhost"
 }
 
+# 检测端口是否被占用
+is_port_used() {
+  local port="$1"
+  if command -v ss &>/dev/null; then
+    ss -tlnH "sport = :${port}" 2>/dev/null | grep -q .
+  elif command -v netstat &>/dev/null; then
+    netstat -tln 2>/dev/null | grep -qE ":${port}\b"
+  else
+    # fallback: 尝试连接
+    (echo >/dev/tcp/127.0.0.1/"$port") 2>/dev/null
+  fi
+}
+
+# 从 3210 开始找一个未占用的端口
+find_free_port() {
+  local port=3210
+  while is_port_used "$port"; do
+    port=$((port + RANDOM % 10 + 1))
+    if [ "$port" -gt 65535 ]; then
+      port=$((RANDOM % 10000 + 10000))
+    fi
+  done
+  echo "$port"
+}
+
 # 从已有安装目录加载配置
 load_conf() {
   local dir="${V2FUN_DIR:-$(pwd)}"
@@ -140,13 +165,26 @@ do_install() {
   fi
 
   # 2) 端口
-  local default_port=3210
+  local default_port
+  default_port="$(find_free_port)"
   read -rp "$(echo -e "${CYAN}服务端口${NC} [${DIM}${default_port}${NC}]: ")" input_port
   local port="${input_port:-$default_port}"
 
   # 校验端口
   if ! [[ "$port" =~ ^[0-9]+$ ]] || [ "$port" -lt 1 ] || [ "$port" -gt 65535 ]; then
     err "无效端口: $port（范围 1-65535）"
+  fi
+
+  # 检测占用
+  if is_port_used "$port"; then
+    warn "端口 $port 已被占用"
+    local alt
+    alt="$(find_free_port)"
+    read -rp "$(echo -e "使用推荐端口 ${GREEN}${alt}${NC} ？(Y/n) ")" use_alt
+    if [[ "$use_alt" =~ ^[Nn]$ ]]; then
+      err "请重新运行脚本选择其他端口"
+    fi
+    port="$alt"
   fi
 
   # 3) 确认
@@ -213,6 +251,10 @@ do_config() {
 
   if ! [[ "$new_port" =~ ^[0-9]+$ ]] || [ "$new_port" -lt 1 ] || [ "$new_port" -gt 65535 ]; then
     err "无效端口: $new_port（范围 1-65535）"
+  fi
+
+  if is_port_used "$new_port"; then
+    err "端口 $new_port 已被占用，请选择其他端口"
   fi
 
   info "更新配置 ..."
