@@ -18,12 +18,12 @@ export default function App() {
         <Route path="/nodes" element={<Nodes />} />
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/topic/:id" element={<TopicDetail />} />
+        <Route path="/create" element={<CreateTopic />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/node/:name" element={<NodeDetail />} />
+        <Route path="/member/:username" element={<MemberPage />} />
       </Route>
-      <Route path="/topic/:id" element={<TopicDetail />} />
-      <Route path="/create" element={<CreateTopic />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/node/:name" element={<NodeDetail />} />
-      <Route path="/member/:username" element={<MemberPage />} />
     </Routes>
   )
 }

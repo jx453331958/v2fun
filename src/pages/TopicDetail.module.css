@@ -1,6 +1,5 @@
 .page {
   min-height: 100dvh;
-  padding-bottom: 72px;
   background: var(--bg-primary);
 }
 
@@ -111,7 +110,7 @@
 
 .replyBar {
   position: fixed;
-  bottom: 0;
+  bottom: calc(var(--tab-height) + var(--safe-bottom));
   left: 50%;
   transform: translateX(-50%);
   width: 100%;
@@ -120,7 +119,7 @@
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
   border-top: 1px solid var(--border);
-  padding: 8px 16px calc(8px + var(--safe-bottom));
+  padding: 8px 16px;
   z-index: 100;
 }
 
