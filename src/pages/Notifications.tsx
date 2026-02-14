@@ -200,16 +200,21 @@ export default function Notifications() {
                   </div>
                 )}
                 <div className={styles.itemBody}>
-                  <div
-                    className={styles.itemText}
-                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(notif.payload_rendered || notif.text) }}
-                  />
-                  <span className={styles.itemTime}>
-                    {formatDistanceToNow(new Date(notif.created * 1000), {
-                      locale: zhCN,
-                      addSuffix: true,
-                    })}
-                  </span>
+                  <div className={styles.itemHeader}>
+                    <span
+                      className={styles.itemText}
+                      dangerouslySetInnerHTML={{ __html: sanitizeHtml(notif.payload_rendered || notif.text) }}
+                    />
+                    <span className={styles.itemTime}>
+                      {formatDistanceToNow(new Date(notif.created * 1000), {
+                        locale: zhCN,
+                        addSuffix: true,
+                      })}
+                    </span>
+                  </div>
+                  {notif.payload && (
+                    <div className={styles.itemPayload}>{notif.payload}</div>
+                  )}
                 </div>
               </div>
             ))}

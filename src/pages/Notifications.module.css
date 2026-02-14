@@ -70,11 +70,15 @@
   min-width: 0;
 }
 
-.itemText {
+.itemHeader {
   font-size: 0.85rem;
   color: var(--text-primary);
   line-height: 1.5;
   word-break: break-word;
+}
+
+.itemText {
+  display: inline;
 }
 
 .itemText a {
@@ -84,9 +88,20 @@
 .itemTime {
   font-size: 0.68rem;
   color: var(--text-tertiary);
-  margin-top: 3px;
-  display: block;
+  white-space: nowrap;
   font-family: var(--font-mono);
+  margin-left: 8px;
+}
+
+.itemPayload {
+  margin-top: 6px;
+  padding: 8px 10px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  word-break: break-word;
 }
 
 .empty {
