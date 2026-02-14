@@ -3,37 +3,135 @@
   background: var(--bg-primary);
 }
 
-.guide {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 80px 32px;
-  text-align: center;
+.form {
+  padding: 16px;
+  max-width: 600px;
+  margin: 0 auto;
 }
 
-.guideIcon {
-  color: var(--text-tertiary);
-  margin-bottom: 20px;
+.field {
+  margin-bottom: 16px;
 }
 
-.guideText {
-  font-size: 0.92rem;
+.label {
+  display: block;
+  font-size: 0.82rem;
   color: var(--text-secondary);
-  margin-bottom: 24px;
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.input:focus {
+  border-color: var(--accent);
+}
+
+.textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  outline: none;
+  resize: none;
+  min-height: 120px;
+  line-height: 1.6;
+  transition: border-color 0.15s;
+}
+
+.textarea:focus {
+  border-color: var(--accent);
+}
+
+.syntaxToggle {
+  display: flex;
+  gap: 8px;
+}
+
+.syntaxBtn {
+  padding: 6px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.syntaxBtn:active {
+  opacity: 0.8;
+}
+
+.syntaxActive {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--bg-primary);
+}
+
+.error {
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  font-size: 0.84rem;
+  margin-bottom: 16px;
   line-height: 1.5;
 }
 
-.guideBtn {
-  padding: 10px 28px;
+.submitBtn {
+  width: 100%;
+  padding: 12px;
   border-radius: var(--radius-md);
   background: var(--accent);
   color: var(--bg-primary);
-  font-size: 0.88rem;
+  font-size: 0.9rem;
   font-weight: 600;
+  cursor: pointer;
   transition: opacity 0.15s;
 }
 
-.guideBtn:active {
+.submitBtn:active {
+  opacity: 0.8;
+}
+
+.submitBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.loginPrompt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 80px 32px;
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+}
+
+.loginBtn {
+  padding: 10px 28px;
+  background: var(--accent);
+  color: var(--bg-primary);
+  border-radius: var(--radius-md);
+  font-size: 0.88rem;
+  font-weight: 600;
+  margin-top: 16px;
+}
+
+.loginBtn:active {
   opacity: 0.8;
 }

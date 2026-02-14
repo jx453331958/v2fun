@@ -782,6 +782,108 @@ app.post('/web/reply', express.json({ limit: '16kb' }), async (req, res) => {
   }
 })
 
+app.post('/web/topic', express.json({ limit: '32kb' }), async (req, res) => {
+  if (!verifySession(req)) return res.status(401).json({ error: '未登录' })
+  const cookie = getStoredCookie()
+  if (!cookie) return res.json({ success: false, error: 'no_cookie' })
+
+  const { title, content, nodeName, syntax } = req.body
+  if (!title || typeof title !== 'string') {
+    return res.status(400).json({ error: '标题不能为空' })
+  }
+  if (!nodeName || typeof nodeName !== 'string') {
+    return res.status(400).json({ error: '节点不能为空' })
+  }
+
+  const fwd = getForwardHeaders(req)
+  const cookieHeader = buildCookieHeader(cookie)
+  try {
+    // Fetch once token from the write page
+    const writeUrl = `https://www.v2ex.com/write?node=${encodeURIComponent(nodeName)}`
+    const pageRes = await fetch(writeUrl, {
+      headers: {
+        'Cookie': cookieHeader,
+        'User-Agent': fwd.userAgent,
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        ...(fwd.acceptLanguage && { 'Accept-Language': fwd.acceptLanguage }),
+      },
+      redirect: 'manual',
+    })
+    if (pageRes.status >= 300) {
+      const location = pageRes.headers.get('location') || ''
+      return res.json({ success: false, error: 'cookie_expired', message: location.includes('/signin') ? 'Cookie 已过期，请重新登录' : `V2EX 返回 ${pageRes.status}` })
+    }
+    const pageHtml = await pageRes.text()
+    const onceMatch = pageHtml.match(/(?:once=|once\/|"once"\s*(?:value|:)\s*"?)(\d{5,})/)
+    if (!onceMatch) {
+      if (pageHtml.includes('/signin')) {
+        return res.json({ success: false, error: 'cookie_expired', message: 'Cookie 已过期，请重新登录' })
+      }
+      return res.json({ success: false, error: 'once_not_found', message: '无法获取 once token，请稍后重试' })
+    }
+    const once = onceMatch[1]
+
+    // POST the topic form
+    const formData = new URLSearchParams()
+    formData.append('title', title)
+    formData.append('content', content || '')
+    formData.append('node_name', nodeName)
+    formData.append('syntax', syntax || 'default')
+    formData.append('once', once)
+
+    const postRes = await fetch('https://www.v2ex.com/write', {
+      method: 'POST',
+      headers: {
+        'Cookie': cookieHeader,
+        'User-Agent': fwd.userAgent,
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Origin': 'https://www.v2ex.com',
+        'Referer': writeUrl,
+      },
+      body: formData.toString(),
+      redirect: 'follow',
+    })
+
+    const body = await postRes.text()
+    const finalUrl = postRes.url || ''
+    console.log(`[web/topic] POST /write → ${postRes.status}, url: ${finalUrl}, body: ${body.length} bytes`)
+
+    // Check for signin redirect
+    if (finalUrl.includes('/signin') || body.includes('/signin')) {
+      return res.json({ success: false, error: 'cookie_expired', message: 'Cookie 已过期，请重新登录' })
+    }
+
+    // Check for V2EX error
+    const problemMatch = body.match(/<div class="problem">([\s\S]*?)<\/div>/)
+    if (problemMatch) {
+      const errorText = problemMatch[1].replace(/<[^>]*>/g, '').trim()
+      console.error(`[web/topic] V2EX error: ${errorText}`)
+      return res.json({ success: false, error: 'create_failed', message: errorText || '发布失败' })
+    }
+
+    // Extract topic ID from final URL: /t/{id}
+    const topicIdMatch = finalUrl.match(/\/t\/(\d+)/)
+    if (topicIdMatch) {
+      return res.json({ success: true, topicId: parseInt(topicIdMatch[1]) })
+    }
+
+    // Also try extracting from response body
+    const bodyTopicMatch = body.match(/href="\/t\/(\d+)"/)
+    if (bodyTopicMatch) {
+      return res.json({ success: true, topicId: parseInt(bodyTopicMatch[1]) })
+    }
+
+    console.error(`[web/topic] Unexpected: status=${postRes.status}, url=${finalUrl}`)
+    res.json({ success: false, error: 'create_failed', message: '发布失败，请稍后重试' })
+  } catch (err) {
+    if (err.message === 'cookie_expired') {
+      return res.json({ success: false, error: 'cookie_expired', message: err.detail || 'Cookie 已过期，请重新登录' })
+    }
+    console.error('[web/topic]', err)
+    res.json({ success: false, error: 'unknown', message: '操作失败' })
+  }
+})
+
 app.post('/web/thank/topic/:id', express.json({ limit: '1kb' }), async (req, res) => {
   if (!verifySession(req)) return res.status(401).json({ error: '未登录' })
   const cookie = getStoredCookie()

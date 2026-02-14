@@ -71,6 +71,7 @@ interface WebResult {
   success: boolean
   error?: string
   message?: string
+  topicId?: number
 }
 
 export const web = {
@@ -107,5 +108,13 @@ export const web = {
       headers: { 'Content-Type': 'application/json' },
       credentials: 'same-origin',
       body: JSON.stringify({ topicId }),
+    }).then(r => r.json()) as Promise<WebResult>,
+
+  createTopic: (title: string, content: string, nodeName: string, syntax: string) =>
+    fetch('/web/topic', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ title, content, nodeName, syntax }),
     }).then(r => r.json()) as Promise<WebResult>,
 }
