@@ -3,6 +3,8 @@ import { v1 } from '../api/client'
 import type { V2Topic } from '../types'
 import TopicCard from '../components/TopicCard'
 import { TopicSkeleton } from '../components/Loading'
+import PullToRefreshIndicator from '../components/PullToRefreshIndicator'
+import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import styles from './Home.module.css'
 
 type Tab = 'hot' | 'latest'
@@ -30,6 +32,12 @@ export default function Home() {
     fetchTopics(tab)
   }, [tab, fetchTopics])
 
+  const { pullDistance, isRefreshing, pullStyle } = usePullToRefresh({
+    onRefresh: async () => {
+      await fetchTopics(tab)
+    },
+  })
+
   return (
     <div className={styles.page}>
       <header className={styles.header}>
@@ -54,22 +62,26 @@ export default function Home() {
         </div>
       </header>
 
-      {loading ? (
-        <TopicSkeleton />
-      ) : error ? (
-        <div className={styles.error}>
-          <p>{error}</p>
-          <button className={styles.retryBtn} onClick={() => fetchTopics(tab)}>
-            重试
-          </button>
-        </div>
-      ) : (
-        <div>
-          {topics.map((topic) => (
-            <TopicCard key={topic.id} topic={topic} />
-          ))}
-        </div>
-      )}
+      <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} />
+
+      <div style={pullStyle}>
+        {loading && !isRefreshing ? (
+          <TopicSkeleton />
+        ) : error ? (
+          <div className={styles.error}>
+            <p>{error}</p>
+            <button className={styles.retryBtn} onClick={() => fetchTopics(tab)}>
+              重试
+            </button>
+          </div>
+        ) : (
+          <div>
+            {topics.map((topic) => (
+              <TopicCard key={topic.id} topic={topic} />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

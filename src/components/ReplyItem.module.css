@@ -96,3 +96,8 @@
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
+
+.highlight {
+  background: var(--accent-light);
+  transition: background 2s ease;
+}

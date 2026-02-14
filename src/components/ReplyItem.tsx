@@ -9,9 +9,10 @@ import styles from './ReplyItem.module.css'
 interface Props {
   reply: V2Reply
   floor: number
+  highlight?: boolean
 }
 
-export default function ReplyItem({ reply, floor }: Props) {
+export default function ReplyItem({ reply, floor, highlight }: Props) {
   const navigate = useNavigate()
   const [thanked, setThanked] = useState(reply.thanked)
   const [thanks, setThanks] = useState(reply.thanks)
@@ -34,7 +35,7 @@ export default function ReplyItem({ reply, floor }: Props) {
   }
 
   return (
-    <div className={styles.reply}>
+    <div className={`${styles.reply} ${highlight ? styles.highlight : ''}`} id={`reply-floor-${floor}`}>
       <div className={styles.left}>
         <div
           className={styles.avatar}

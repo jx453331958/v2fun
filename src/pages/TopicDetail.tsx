@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react'
-import { useParams } from 'react-router-dom'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { useParams, useLocation } from 'react-router-dom'
 import { formatDistanceToNow } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
 import { v1, v2 } from '../api/client'
@@ -8,33 +8,110 @@ import type { V2Topic, V2Reply } from '../types'
 import Header from '../components/Header'
 import ReplyItem from '../components/ReplyItem'
 import Loading from '../components/Loading'
+import PullToRefreshIndicator from '../components/PullToRefreshIndicator'
+import { usePullToRefresh } from '../hooks/usePullToRefresh'
+import { useInfiniteScroll } from '../hooks/useInfiniteScroll'
 import styles from './TopicDetail.module.css'
+
+const PAGE_SIZE = 100
 
 export default function TopicDetail() {
   const { id } = useParams<{ id: string }>()
+  const location = useLocation()
   const { isLoggedIn } = useAuth()
   const [topic, setTopic] = useState<V2Topic | null>(null)
-  const [replies, setReplies] = useState<V2Reply[]>([])
+  const [firstPageReplies, setFirstPageReplies] = useState<V2Reply[]>([])
   const [loading, setLoading] = useState(true)
   const [replyContent, setReplyContent] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [thanked, setThanked] = useState(false)
+  const [highlightFloor, setHighlightFloor] = useState<number | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  useEffect(() => {
+  const scrollToFloor = (location.state as { scrollToFloor?: number } | null)?.scrollToFloor
+
+  const fetchRepliesPage = useCallback(
+    async (page: number) => {
+      if (!id) return []
+      return v1.replies(parseInt(id), page)
+    },
+    [id]
+  )
+
+  const { items: moreReplies, hasMore, isLoadingMore, sentinelRef, reset, loadUpToPage } =
+    useInfiniteScroll<V2Reply>({
+      fetchPage: fetchRepliesPage,
+      pageSize: PAGE_SIZE,
+      enabled: !loading && firstPageReplies.length >= PAGE_SIZE,
+    })
+
+  const allReplies = [...firstPageReplies, ...moreReplies]
+
+  const fetchData = useCallback(async () => {
     if (!id) return
     const topicId = parseInt(id)
     setLoading(true)
-    Promise.all([
-      v1.topicById(topicId).then((arr) => arr[0]),
-      v1.replies(topicId),
-    ])
-      .then(([t, r]) => {
-        setTopic(t)
-        setReplies(r)
-      })
-      .finally(() => setLoading(false))
+    try {
+      const [t, r] = await Promise.all([
+        v1.topicById(topicId).then((arr) => arr[0]),
+        v1.replies(topicId, 1),
+      ])
+      setTopic(t)
+      setFirstPageReplies(r)
+    } finally {
+      setLoading(false)
+    }
   }, [id])
+
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
+
+  // Handle scrollToFloor after data is loaded
+  useEffect(() => {
+    if (!scrollToFloor || loading || !topic) return
+
+    const doScroll = async () => {
+      const targetPage = Math.ceil(scrollToFloor / PAGE_SIZE)
+
+      if (targetPage > 1) {
+        // Need to load more pages first
+        const allLoaded = await loadUpToPage(targetPage)
+        setFirstPageReplies([])
+        // Wait for render
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            scrollToElement(scrollToFloor)
+          })
+        })
+        // Update firstPageReplies with all loaded data
+        setFirstPageReplies(allLoaded)
+      } else {
+        // Already on first page, just scroll
+        requestAnimationFrame(() => {
+          scrollToElement(scrollToFloor)
+        })
+      }
+    }
+
+    doScroll()
+  }, [scrollToFloor, loading, topic, loadUpToPage])
+
+  const scrollToElement = (floor: number) => {
+    const el = document.getElementById(`reply-floor-${floor}`)
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      setHighlightFloor(floor)
+      setTimeout(() => setHighlightFloor(null), 2000)
+    }
+  }
+
+  const { pullDistance, isRefreshing, pullStyle } = usePullToRefresh({
+    onRefresh: async () => {
+      reset()
+      await fetchData()
+    },
+  })
 
   const handleReply = async () => {
     if (!replyContent.trim() || !id || submitting) return
@@ -42,8 +119,10 @@ export default function TopicDetail() {
     try {
       await v2.replyTopic(parseInt(id), replyContent)
       setReplyContent('')
-      const r = await v1.replies(parseInt(id))
-      setReplies(r)
+      // Reload first page of replies
+      const r = await v1.replies(parseInt(id), 1)
+      setFirstPageReplies(r)
+      reset()
       if (textareaRef.current) {
         textareaRef.current.style.height = 'auto'
       }
@@ -92,7 +171,7 @@ export default function TopicDetail() {
     }
   }, [])
 
-  if (loading) {
+  if (loading && !isRefreshing) {
     return (
       <div className={styles.page}>
         <Header title="主题详情" showBack />
@@ -119,7 +198,9 @@ export default function TopicDetail() {
     <div className={styles.page}>
       <Header title={topic.node?.title || '主题详情'} showBack />
 
-      <div>
+      <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} />
+
+      <div style={pullStyle}>
         <article className={styles.topic}>
           <div className={styles.topicMeta}>
             <div className={styles.avatar}>
@@ -160,12 +241,24 @@ export default function TopicDetail() {
         </article>
 
         <div className={styles.repliesSection}>
-          {replies.length === 0 ? (
+          {allReplies.length === 0 ? (
             <div className={styles.noReplies}>暂无回复，来说两句？</div>
           ) : (
-            replies.map((reply, i) => (
-              <ReplyItem key={reply.id} reply={reply} floor={i + 1} />
-            ))
+            <>
+              {allReplies.map((reply, i) => (
+                <ReplyItem
+                  key={reply.id}
+                  reply={reply}
+                  floor={i + 1}
+                  highlight={highlightFloor === i + 1}
+                />
+              ))}
+              <div ref={sentinelRef} />
+              {isLoadingMore && <Loading text="加载更多回复..." />}
+              {!hasMore && allReplies.length > 0 && (
+                <div className={styles.noMore}>没有更多回复了</div>
+              )}
+            </>
           )}
         </div>
       </div>

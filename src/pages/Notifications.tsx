@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { formatDistanceToNow } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
@@ -6,26 +6,92 @@ import { v2 } from '../api/client'
 import { useAuth } from '../hooks/useAuth'
 import type { V2Notification } from '../types'
 import Loading from '../components/Loading'
+import PullToRefreshIndicator from '../components/PullToRefreshIndicator'
+import { usePullToRefresh } from '../hooks/usePullToRefresh'
+import { useInfiniteScroll } from '../hooks/useInfiniteScroll'
+import { parseNotification, parseNotificationLink } from '../utils/parseNotification'
 import styles from './Notifications.module.css'
 
 export default function Notifications() {
   const { isLoggedIn } = useAuth()
   const navigate = useNavigate()
-  const [notifications, setNotifications] = useState<V2Notification[]>([])
+  const [firstPageNotifications, setFirstPageNotifications] = useState<V2Notification[]>([])
   const [loading, setLoading] = useState(true)
+
+  const fetchFirstPage = useCallback(async () => {
+    if (!isLoggedIn) return
+    setLoading(true)
+    try {
+      const res = await v2.notifications(1)
+      if (res.success) setFirstPageNotifications(res.result || [])
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false)
+    }
+  }, [isLoggedIn])
 
   useEffect(() => {
     if (!isLoggedIn) {
       setLoading(false)
       return
     }
-    v2.notifications()
-      .then((res) => {
-        if (res.success) setNotifications(res.result || [])
+    fetchFirstPage()
+  }, [isLoggedIn, fetchFirstPage])
+
+  const fetchPage = useCallback(
+    async (page: number) => {
+      const res = await v2.notifications(page)
+      if (res.success) return res.result || []
+      return []
+    },
+    []
+  )
+
+  const { items: moreNotifications, hasMore, isLoadingMore, sentinelRef, reset } =
+    useInfiniteScroll<V2Notification>({
+      fetchPage,
+      pageSize: 20,
+      enabled: isLoggedIn && !loading,
+    })
+
+  const allNotifications = [...firstPageNotifications, ...moreNotifications]
+
+  const { pullDistance, isRefreshing, pullStyle } = usePullToRefresh({
+    onRefresh: async () => {
+      reset()
+      await fetchFirstPage()
+    },
+  })
+
+  const handleItemClick = (notif: V2Notification, e: React.MouseEvent) => {
+    // Check if clicked on an anchor tag inside the notification
+    const target = e.target as HTMLElement
+    const anchor = target.closest('a')
+    if (anchor) {
+      e.preventDefault()
+      const href = anchor.getAttribute('href') || ''
+      const parsed = parseNotificationLink(href)
+      if (parsed) {
+        if (parsed.type === 'topic') {
+          navigate(`/topic/${parsed.topicId}`, {
+            state: parsed.replyFloor ? { scrollToFloor: parsed.replyFloor } : undefined,
+          })
+        } else if (parsed.type === 'member') {
+          navigate(`/member/${parsed.username}`)
+        }
+        return
+      }
+    }
+
+    // Clicking the whole item navigates to the topic
+    const parsed = parseNotification(notif.payload_rendered || notif.text)
+    if (parsed) {
+      navigate(`/topic/${parsed.topicId}`, {
+        state: parsed.replyFloor ? { scrollToFloor: parsed.replyFloor } : undefined,
       })
-      .catch(() => {})
-      .finally(() => setLoading(false))
-  }, [isLoggedIn])
+    }
+  }
 
   if (!isLoggedIn) {
     return (
@@ -49,40 +115,53 @@ export default function Notifications() {
         <h1 className={styles.title}>通知</h1>
       </div>
 
-      {loading ? (
-        <Loading />
-      ) : notifications.length === 0 ? (
-        <div className={styles.empty}>暂无通知</div>
-      ) : (
-        <div className={styles.list}>
-          {notifications.map((notif) => (
-            <div
-              key={notif.id}
-              className={styles.item}
-            >
-              <div className={styles.itemAvatar}>
-                <img
-                  src={notif.member.avatar_normal || notif.member.avatar}
-                  alt={notif.member.username}
-                  onClick={() => navigate(`/member/${notif.member.username}`)}
-                />
+      <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} />
+
+      <div style={pullStyle}>
+        {loading && !isRefreshing ? (
+          <Loading />
+        ) : allNotifications.length === 0 ? (
+          <div className={styles.empty}>暂无通知</div>
+        ) : (
+          <div className={styles.list}>
+            {allNotifications.map((notif) => (
+              <div
+                key={notif.id}
+                className={styles.item}
+                onClick={(e) => handleItemClick(notif, e)}
+              >
+                <div className={styles.itemAvatar}>
+                  <img
+                    src={notif.member.avatar_normal || notif.member.avatar}
+                    alt={notif.member.username}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      navigate(`/member/${notif.member.username}`)
+                    }}
+                  />
+                </div>
+                <div className={styles.itemBody}>
+                  <div
+                    className={styles.itemText}
+                    dangerouslySetInnerHTML={{ __html: notif.payload_rendered || notif.text }}
+                  />
+                  <span className={styles.itemTime}>
+                    {formatDistanceToNow(new Date(notif.created * 1000), {
+                      locale: zhCN,
+                      addSuffix: true,
+                    })}
+                  </span>
+                </div>
               </div>
-              <div className={styles.itemBody}>
-                <div
-                  className={styles.itemText}
-                  dangerouslySetInnerHTML={{ __html: notif.payload_rendered || notif.text }}
-                />
-                <span className={styles.itemTime}>
-                  {formatDistanceToNow(new Date(notif.created * 1000), {
-                    locale: zhCN,
-                    addSuffix: true,
-                  })}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+            <div ref={sentinelRef} />
+            {isLoadingMore && <Loading text="加载更多..." />}
+            {!hasMore && allNotifications.length > 0 && (
+              <div className={styles.noMore}>没有更多了</div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
