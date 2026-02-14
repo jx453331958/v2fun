@@ -19,10 +19,11 @@
 ### 方式一：一键脚本（推荐）
 
 ```bash
-# 安装并启动
-bash <(curl -sL https://raw.githubusercontent.com/jiangxuan/v2fun/main/v2fun.sh) install
+# 安装并启动（无参数默认 install）
+bash <(curl -sL https://raw.githubusercontent.com/jx453331958/v2fun/main/v2fun.sh)
 
-# 后续管理
+# 后续管理（脚本安装到 /opt/v2fun/）
+cd /opt/v2fun
 bash v2fun.sh start      # 启动
 bash v2fun.sh stop       # 停止
 bash v2fun.sh restart    # 重启
@@ -35,7 +36,7 @@ bash v2fun.sh uninstall  # 卸载
 ### 方式二：手动 Docker 部署
 
 ```bash
-git clone https://github.com/jiangxuan/v2fun.git
+git clone https://github.com/jx453331958/v2fun.git
 cd v2fun
 docker compose up -d
 ```

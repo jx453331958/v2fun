@@ -6,7 +6,7 @@ set -euo pipefail
 #  用法: bash v2fun.sh [命令]
 # ============================================================
 
-REPO_URL="https://github.com/jiangxuan/v2fun.git"
+REPO_URL="https://github.com/jx453331958/v2fun.git"
 INSTALL_DIR="${V2FUN_DIR:-/opt/v2fun}"
 COMPOSE_FILE="$INSTALL_DIR/docker-compose.yml"
 CONTAINER_NAME="v2fun"
@@ -213,7 +213,10 @@ show_help() {
 }
 
 # ---- 入口 ----
-case "${1:-}" in
+# 无参数时默认 install（方便 curl | bash 一键安装）
+CMD="${1:-install}"
+
+case "$CMD" in
   install)    do_install ;;
   update)     do_update ;;
   start)      do_start ;;
@@ -222,5 +225,8 @@ case "${1:-}" in
   logs)       do_logs ;;
   status)     do_status ;;
   uninstall)  do_uninstall ;;
-  *)          show_help ;;
+  help|--help|-h) show_help ;;
+  *)
+    error "未知命令: $CMD (使用 'bash v2fun.sh help' 查看帮助)"
+    ;;
 esac
