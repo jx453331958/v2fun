@@ -1,6 +1,6 @@
 services:
   v2fun:
-    build: .
+    image: ghcr.io/jx453331958/v2fun:latest
     ports:
       - "3210:3210"
     environment:

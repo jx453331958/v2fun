@@ -23,7 +23,7 @@
 bash <(curl -sL "https://raw.githubusercontent.com/jx453331958/v2fun/main/v2fun.sh")
 ```
 
-脚本会引导你完成安装：选择安装目录、设置端口、确认后自动构建部署。
+脚本会引导你完成安装：选择安装目录、设置端口、确认后自动拉取镜像部署。无需克隆仓库，镜像由 GitHub Actions 自动构建。
 
 安装完成后，进入安装目录即可管理：
 
@@ -45,11 +45,26 @@ bash v2fun.sh status     # 查看状态
 bash v2fun.sh uninstall  # 卸载
 ```
 
-### 方式二：手动 Docker 部署
+### 方式二：Docker Compose
 
 ```bash
-git clone https://github.com/jx453331958/v2fun.git
-cd v2fun
+# 创建目录
+mkdir v2fun && cd v2fun
+
+# 创建 docker-compose.yml
+cat > docker-compose.yml <<EOF
+services:
+  v2fun:
+    image: ghcr.io/jx453331958/v2fun:latest
+    ports:
+      - "3210:3210"
+    environment:
+      - NODE_ENV=production
+      - PORT=3210
+    restart: unless-stopped
+EOF
+
+# 拉取镜像并启动
 docker compose up -d
 ```
 
@@ -91,6 +106,7 @@ npm run dev
 | 路由 | React Router 6 |
 | 动效 | Framer Motion |
 | 后端代理 | Express + http-proxy-middleware |
+| CI/CD | GitHub Actions + GHCR |
 | 部署 | Docker 多阶段构建 |
 
 ## 项目结构

@@ -5,7 +5,8 @@ set -euo pipefail
 #  V2Fun 一键管理脚本
 # ============================================================
 
-REPO_URL="https://github.com/jx453331958/v2fun.git"
+IMAGE="ghcr.io/jx453331958/v2fun:latest"
+SCRIPT_URL="https://raw.githubusercontent.com/jx453331958/v2fun/main/v2fun.sh"
 CONF_FILE=""        # 安装后指向 $INSTALL_DIR/.v2fun.conf
 INSTALL_DIR=""      # 从 conf 或交互获取
 COMPOSE_CMD=""
@@ -93,10 +94,6 @@ check_compose() {
   fi
 }
 
-check_git() {
-  command -v git &>/dev/null || err "未检测到 Git，请先安装"
-}
-
 require_installed() {
   load_conf || err "V2Fun 尚未安装，请先选择「安装」"
   check_docker
@@ -110,7 +107,7 @@ generate_compose() {
   cat > "$INSTALL_DIR/docker-compose.yml" <<YAML
 services:
   v2fun:
-    build: .
+    image: ${IMAGE}
     ports:
       - "${port}:3210"
     environment:
@@ -141,7 +138,6 @@ do_install() {
 
   check_docker
   check_compose
-  check_git
 
   # 1) 安装目录
   local default_dir="$(pwd)/v2fun"
@@ -199,16 +195,20 @@ do_install() {
 
   # 4) 执行安装
   echo ""
-  info "克隆仓库 ..."
-  git clone --depth 1 "$REPO_URL" "$INSTALL_DIR"
+  mkdir -p "$INSTALL_DIR"
 
   info "生成配置 ..."
   generate_compose "$port"
   save_conf "$port"
 
-  info "构建 Docker 镜像（首次较慢，请耐心等待）..."
+  # 下载管理脚本到安装目录
+  info "下载管理脚本 ..."
+  curl -fsSL "$SCRIPT_URL" -o "$INSTALL_DIR/v2fun.sh"
+  chmod +x "$INSTALL_DIR/v2fun.sh"
+
+  info "拉取 Docker 镜像（首次较慢，请耐心等待）..."
   cd "$INSTALL_DIR"
-  $COMPOSE_CMD build --no-cache
+  $COMPOSE_CMD pull
 
   info "启动服务 ..."
   $COMPOSE_CMD up -d
@@ -271,35 +271,22 @@ do_config() {
 
 do_update() {
   require_installed
-  check_git
   cd "$INSTALL_DIR"
 
   local port
   port="$(get_port)"
 
-  info "检查更新 ..."
-  git fetch origin
-  local LOCAL REMOTE
-  LOCAL=$(git rev-parse HEAD)
-  REMOTE=$(git rev-parse origin/main 2>/dev/null || git rev-parse origin/master)
-
-  if [ "$LOCAL" = "$REMOTE" ]; then
-    success "已是最新版本"
-    return
-  fi
-
-  info "拉取新版本 ..."
-  git reset --hard "$REMOTE"
-
-  # 保留用户配置
-  generate_compose "$port"
-
-  info "重新构建镜像 ..."
-  $COMPOSE_CMD build --no-cache
+  info "拉取最新镜像 ..."
+  $COMPOSE_CMD pull
 
   info "重启服务 ..."
   $COMPOSE_CMD down
   $COMPOSE_CMD up -d
+
+  # 更新管理脚本
+  info "更新管理脚本 ..."
+  curl -fsSL "$SCRIPT_URL" -o "$INSTALL_DIR/v2fun.sh"
+  chmod +x "$INSTALL_DIR/v2fun.sh"
 
   docker image prune -f &>/dev/null || true
 
