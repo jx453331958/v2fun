@@ -30,16 +30,32 @@
 
 .tab {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   flex: 1;
+  gap: 1px;
   color: var(--text-tertiary);
-  text-decoration: none;
   transition: color 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.tab:active {
+  opacity: 0.7;
 }
 
 .tab.active {
   color: var(--accent);
+}
+
+.tab.active svg {
+  stroke-width: 2;
+}
+
+.tabLabel {
+  font-size: 0.58rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
 }
 
 .createBtn {
@@ -48,6 +64,7 @@
   justify-content: center;
   flex: 1;
   padding: 0;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .createBtn svg {
