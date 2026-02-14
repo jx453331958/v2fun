@@ -10,6 +10,7 @@ import PullToRefreshIndicator from '../components/PullToRefreshIndicator'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { useInfiniteScroll } from '../hooks/useInfiniteScroll'
 import { parseNotification, parseNotificationLink } from '../utils/parseNotification'
+import { fixAvatarUrl } from '../utils/fixAvatarUrl'
 import styles from './Notifications.module.css'
 
 export default function Notifications() {
@@ -132,7 +133,7 @@ export default function Notifications() {
               >
                 <div className={styles.itemAvatar}>
                   <img
-                    src={notif.member.avatar_normal || notif.member.avatar}
+                    src={fixAvatarUrl(notif.member.avatar_normal || notif.member.avatar)}
                     alt={notif.member.username}
                     onClick={(e) => {
                       e.stopPropagation()

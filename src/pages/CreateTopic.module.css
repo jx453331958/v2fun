@@ -117,7 +117,7 @@
 
 .nodePicker {
   width: 100%;
-  max-height: 70dvh;
+  max-height: 70vh;
   background: var(--bg-secondary);
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   display: flex;
