@@ -16,11 +16,19 @@ interface UsePullToRefreshReturn {
   pullStyle: CSSProperties
 }
 
+// Rubber-band damping: progressive resistance as you pull further
+function dampen(dy: number): number {
+  // Exponential decay gives a natural "elastic" feel
+  return MAX_PULL * (1 - Math.exp(-dy / (MAX_PULL * 1.2)))
+}
+
 export function usePullToRefresh({ onRefresh }: UsePullToRefreshOptions): UsePullToRefreshReturn {
   const [pullDistance, setPullDistance] = useState(0)
   const [status, setStatus] = useState<PullStatus>('idle')
   const startYRef = useRef(0)
+  const startXRef = useRef(0)
   const pullingRef = useRef(false)
+  const lockedRef = useRef(false) // true = confirmed vertical pull; false = undecided or horizontal
   const doneTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   const handleRefresh = useCallback(async () => {
@@ -53,22 +61,45 @@ export function usePullToRefresh({ onRefresh }: UsePullToRefreshOptions): UsePul
       if (isActive) return
       if (window.scrollY <= 0) {
         startYRef.current = e.touches[0].clientY
+        startXRef.current = e.touches[0].clientX
         pullingRef.current = true
+        lockedRef.current = false
       }
     }
 
     const onTouchMove = (e: TouchEvent) => {
       if (!pullingRef.current || isActive) return
       const dy = e.touches[0].clientY - startYRef.current
-      if (dy > 10 && window.scrollY <= 0) {
-        // Only preventDefault after a clear downward drag (>10px),
-        // so small touch movements during a tap still generate click events
+      const dx = e.touches[0].clientX - startXRef.current
+
+      // Determine direction lock on first significant movement
+      if (!lockedRef.current) {
+        const absDy = Math.abs(dy)
+        const absDx = Math.abs(dx)
+        // Need at least 10px to decide direction
+        if (absDy < 10 && absDx < 10) return
+        if (absDx > absDy) {
+          // Horizontal swipe — abort pull-to-refresh entirely
+          pullingRef.current = false
+          return
+        }
+        if (dy <= 0) {
+          // Scrolling up — not a pull
+          pullingRef.current = false
+          return
+        }
+        // Confirmed downward vertical pull
+        lockedRef.current = true
+      }
+
+      if (dy > 0 && window.scrollY <= 0) {
         e.preventDefault()
-        const distance = Math.min(dy * 0.5, MAX_PULL)
+        const distance = dampen(dy)
         setPullDistance(distance)
         setStatus(distance >= THRESHOLD ? 'ready' : 'pulling')
       } else if (dy <= 0) {
         pullingRef.current = false
+        lockedRef.current = false
         setPullDistance(0)
         setStatus('idle')
       }
@@ -77,6 +108,7 @@ export function usePullToRefresh({ onRefresh }: UsePullToRefreshOptions): UsePul
     const onTouchEnd = () => {
       if (!pullingRef.current || isActive) return
       pullingRef.current = false
+      lockedRef.current = false
       setPullDistance((d) => {
         if (d >= THRESHOLD) {
           handleRefresh()
@@ -98,9 +130,12 @@ export function usePullToRefresh({ onRefresh }: UsePullToRefreshOptions): UsePul
     }
   }, [status, handleRefresh])
 
+  const pulling = pullingRef.current && lockedRef.current
+
   const pullStyle: CSSProperties = {
-    transform: pullDistance > 0 ? `translateY(${pullDistance}px)` : undefined,
-    transition: pullingRef.current ? 'none' : 'transform 0.3s cubic-bezier(0.2, 0, 0, 1)',
+    transform: `translateY(${pullDistance}px)`,
+    transition: pulling ? 'none' : 'transform 0.3s cubic-bezier(0.2, 0, 0, 1)',
+    willChange: pulling ? 'transform' : undefined,
   }
 
   return { pullDistance, status, pullStyle }
