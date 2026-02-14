@@ -76,7 +76,7 @@ export default function NodeDetail() {
           <Loading />
         ) : (
           <>
-            {node?.header && (
+            {node?.header?.trim() && (
               <div
                 className={styles.nodeHeader}
                 dangerouslySetInnerHTML={{ __html: node.header }}

@@ -10,7 +10,7 @@ import styles from './Home.module.css'
 type Tab = 'hot' | 'latest'
 
 export default function Home() {
-  const [tab, setTab] = useState<Tab>('hot')
+  const [tab, setTab] = useState<Tab>('latest')
   const [topics, setTopics] = useState<V2Topic[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -57,7 +57,7 @@ export default function Home() {
           </button>
           <div
             className={styles.tabSlider}
-            style={{ transform: `translateX(${tab === 'hot' ? 0 : '100%'})` }}
+            style={{ transform: `translateX(${tab === 'latest' ? '100%' : 0})` }}
           />
         </div>
       </header>
