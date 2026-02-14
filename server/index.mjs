@@ -133,15 +133,24 @@ function buildCookieHeader(cookie) {
   return `PB3_SESSION=${cookie}`
 }
 
-const V2EX_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+const FALLBACK_UA = 'Mozilla/5.0 (compatible; V2Fun/1.0)'
+
+/** Extract forwarding headers from incoming request */
+function getForwardHeaders(req) {
+  return {
+    userAgent: req.headers['user-agent'] || FALLBACK_UA,
+    acceptLanguage: req.headers['accept-language'] || '',
+  }
+}
 
 /** Verify V2EX cookie by fetching a page, return username if valid */
-async function verifyV2exCookie(cookieStr) {
+async function verifyV2exCookie(cookieStr, fwd) {
   const res = await fetch('https://www.v2ex.com/settings', {
     headers: {
       'Cookie': buildCookieHeader(cookieStr),
-      'User-Agent': V2EX_UA,
+      'User-Agent': fwd.userAgent,
       'Accept': 'text/html,application/xhtml+xml',
+      ...(fwd.acceptLanguage && { 'Accept-Language': fwd.acceptLanguage }),
     },
     redirect: 'manual',
   })
@@ -156,15 +165,15 @@ async function verifyV2exCookie(cookieStr) {
 }
 
 /** Fetch once token from topic page */
-async function fetchOnceToken(cookie, topicId) {
+async function fetchOnceToken(cookie, topicId, fwd) {
   const url = `https://www.v2ex.com/t/${topicId}`
   const cookieHeader = buildCookieHeader(cookie)
   const res = await fetch(url, {
     headers: {
       'Cookie': cookieHeader,
-      'User-Agent': V2EX_UA,
+      'User-Agent': fwd.userAgent,
       'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+      ...(fwd.acceptLanguage && { 'Accept-Language': fwd.acceptLanguage }),
     },
     redirect: 'manual',
   })
@@ -244,16 +253,17 @@ app.post('/auth/login', express.json({ limit: '8kb' }), async (req, res) => {
   if (!cookie || typeof cookie !== 'string' || cookie.length > 4096) {
     return res.status(400).json({ error: 'Invalid cookie' })
   }
+  const fwd = getForwardHeaders(req)
   try {
     // Verify cookie against V2EX
-    const username = await verifyV2exCookie(cookie)
+    const username = await verifyV2exCookie(cookie, fwd)
     if (!username) {
       return res.status(401).json({ error: 'Cookie 无效或已过期' })
     }
 
     // Fetch member info via public v1 API
     const memberRes = await fetch(`https://www.v2ex.com/api/members/show.json?username=${encodeURIComponent(username)}`, {
-      headers: { 'User-Agent': 'V2Fun/1.0' },
+      headers: { 'User-Agent': fwd.userAgent },
     })
     const member = memberRes.ok ? await memberRes.json() : { username }
 
@@ -325,13 +335,14 @@ function parseRelativeTime(text) {
 }
 
 /** Scrape V2EX notifications page and return parsed notifications */
-async function scrapeNotifications(cookie, page) {
+async function scrapeNotifications(cookie, page, fwd) {
   const url = `https://www.v2ex.com/notifications?p=${page}`
   const res = await fetch(url, {
     headers: {
       'Cookie': buildCookieHeader(cookie),
-      'User-Agent': V2EX_UA,
+      'User-Agent': fwd.userAgent,
       'Accept': 'text/html,application/xhtml+xml',
+      ...(fwd.acceptLanguage && { 'Accept-Language': fwd.acceptLanguage }),
     },
     redirect: 'manual',
   })
@@ -400,11 +411,12 @@ async function scrapeNotifications(cookie, page) {
 }
 
 /** Scrape V2EX topic page and return parsed replies + totalPages */
-async function scrapeReplies(topicId, page, cookie) {
+async function scrapeReplies(topicId, page, cookie, fwd) {
   const url = `https://www.v2ex.com/t/${topicId}?p=${page}`
   const headers = {
-    'User-Agent': V2EX_UA,
+    'User-Agent': fwd.userAgent,
     'Accept': 'text/html,application/xhtml+xml',
+    ...(fwd.acceptLanguage && { 'Accept-Language': fwd.acceptLanguage }),
   }
   if (cookie) {
     headers['Cookie'] = buildCookieHeader(cookie)
@@ -513,11 +525,12 @@ async function scrapeReplies(topicId, page, cookie) {
 }
 
 /** Scrape V2EX node page and return parsed topics + totalPages */
-async function scrapeNodeTopics(nodeName, page, cookie) {
+async function scrapeNodeTopics(nodeName, page, cookie, fwd) {
   const url = `https://www.v2ex.com/go/${encodeURIComponent(nodeName)}?p=${page}`
   const headers = {
-    'User-Agent': V2EX_UA,
+    'User-Agent': fwd.userAgent,
     'Accept': 'text/html,application/xhtml+xml',
+    ...(fwd.acceptLanguage && { 'Accept-Language': fwd.acceptLanguage }),
   }
   if (cookie) {
     headers['Cookie'] = buildCookieHeader(cookie)
@@ -657,8 +670,9 @@ app.get('/web/node/:nodeName', async (req, res) => {
   // Use stored cookie if available, but don't require it
   const cookie = verifySession(req) ? getStoredCookie() : null
 
+  const fwd = getForwardHeaders(req)
   try {
-    const { topics, totalPages } = await scrapeNodeTopics(nodeName, page, cookie)
+    const { topics, totalPages } = await scrapeNodeTopics(nodeName, page, cookie, fwd)
     res.json({ success: true, result: topics, totalPages })
   } catch (err) {
     console.error('[web/node]', err)
@@ -676,8 +690,9 @@ app.get('/web/replies/:topicId', async (req, res) => {
   // Use stored cookie if available (for thanked status), but don't require it
   const cookie = verifySession(req) ? getStoredCookie() : null
 
+  const fwd = getForwardHeaders(req)
   try {
-    const { replies, totalPages } = await scrapeReplies(topicId, page, cookie)
+    const { replies, totalPages } = await scrapeReplies(topicId, page, cookie, fwd)
     res.json({ success: true, result: replies, totalPages })
   } catch (err) {
     console.error('[web/replies]', err)
@@ -691,8 +706,9 @@ app.get('/web/notifications', async (req, res) => {
   if (!cookie) return res.json({ success: true, result: [] })
 
   const page = parseInt(req.query.p) || 1
+  const fwd = getForwardHeaders(req)
   try {
-    const notifications = await scrapeNotifications(cookie, page)
+    const notifications = await scrapeNotifications(cookie, page, fwd)
     res.json({ success: true, result: notifications })
   } catch (err) {
     console.error('[web/notifications]', err)
@@ -710,8 +726,9 @@ app.post('/web/reply', express.json({ limit: '16kb' }), async (req, res) => {
     return res.status(400).json({ error: '参数错误' })
   }
 
+  const fwd = getForwardHeaders(req)
   try {
-    const once = await fetchOnceToken(cookie, topicId)
+    const once = await fetchOnceToken(cookie, topicId, fwd)
     const formData = new URLSearchParams()
     formData.append('content', content)
     formData.append('once', once)
@@ -720,7 +737,7 @@ app.post('/web/reply', express.json({ limit: '16kb' }), async (req, res) => {
       method: 'POST',
       headers: {
         'Cookie': buildCookieHeader(cookie),
-        'User-Agent': V2EX_UA,
+        'User-Agent': fwd.userAgent,
         'Content-Type': 'application/x-www-form-urlencoded',
         'Origin': 'https://www.v2ex.com',
         'Referer': `https://www.v2ex.com/t/${topicId}`,
@@ -771,13 +788,14 @@ app.post('/web/thank/topic/:id', express.json({ limit: '1kb' }), async (req, res
   if (!cookie) return res.json({ success: false, error: 'no_cookie' })
 
   const topicId = req.params.id
+  const fwd = getForwardHeaders(req)
   try {
-    const once = await fetchOnceToken(cookie, topicId)
+    const once = await fetchOnceToken(cookie, topicId, fwd)
     const thankRes = await fetch(`https://www.v2ex.com/thank/topic/${topicId}?once=${once}`, {
       method: 'POST',
       headers: {
         'Cookie': buildCookieHeader(cookie),
-        'User-Agent': V2EX_UA,
+        'User-Agent': fwd.userAgent,
         'Referer': `https://www.v2ex.com/t/${topicId}`,
         'X-Requested-With': 'XMLHttpRequest',
       },
@@ -805,13 +823,14 @@ app.post('/web/thank/reply/:id', express.json({ limit: '1kb' }), async (req, res
   const { topicId } = req.body
   if (!topicId) return res.status(400).json({ error: '参数错误' })
 
+  const fwd = getForwardHeaders(req)
   try {
-    const once = await fetchOnceToken(cookie, topicId)
+    const once = await fetchOnceToken(cookie, topicId, fwd)
     const thankRes = await fetch(`https://www.v2ex.com/thank/reply/${replyId}?once=${once}`, {
       method: 'POST',
       headers: {
         'Cookie': buildCookieHeader(cookie),
-        'User-Agent': V2EX_UA,
+        'User-Agent': fwd.userAgent,
         'Referer': `https://www.v2ex.com/t/${topicId}`,
         'X-Requested-With': 'XMLHttpRequest',
       },
@@ -840,11 +859,13 @@ const v2exProxy = createProxyMiddleware({
   secure: true,
   timeout: 30000,
   proxyTimeout: 30000,
-  headers: {
-    'User-Agent': 'V2Fun/1.0',
-  },
   on: {
     proxyReq: (proxyReq, req) => {
+      // Forward original User-Agent
+      const ua = req.headers['user-agent']
+      if (ua) {
+        proxyReq.setHeader('User-Agent', ua)
+      }
       // For v2 API, inject stored cookie for auth
       if (req.url.startsWith('/api/v2/')) {
         const cookie = getStoredCookie()
