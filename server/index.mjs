@@ -299,6 +299,116 @@ const webLimiter = rateLimit({
 })
 app.use('/web', webLimiter)
 
+/** Parse V2EX relative time string to Unix timestamp */
+function parseRelativeTime(text) {
+  const now = Date.now() / 1000
+  if (!text) return now
+  const t = text.trim()
+  if (t === '刚刚') return now
+  let offset = 0
+  const days = t.match(/(\d+)\s*天/)
+  const hours = t.match(/(\d+)\s*小时/)
+  const mins = t.match(/(\d+)\s*分钟/)
+  if (days) offset += parseInt(days[1]) * 86400
+  if (hours) offset += parseInt(hours[1]) * 3600
+  if (mins) offset += parseInt(mins[1]) * 60
+  if (offset > 0) return now - offset
+  // Try absolute date: YYYY-MM-DD
+  const abs = t.match(/(\d{4}-\d{2}-\d{2})/)
+  if (abs) return new Date(abs[1]).getTime() / 1000
+  return now
+}
+
+/** Scrape V2EX notifications page and return parsed notifications */
+async function scrapeNotifications(cookie, page) {
+  const url = `https://www.v2ex.com/notifications?p=${page}`
+  const res = await fetch(url, {
+    headers: {
+      'Cookie': buildCookieHeader(cookie),
+      'User-Agent': V2EX_UA,
+      'Accept': 'text/html,application/xhtml+xml',
+    },
+    redirect: 'manual',
+  })
+  if (res.status >= 300) return []
+  const html = await res.text()
+
+  const notifications = []
+  // Split by notification cells: <div class="cell" id="n_xxxxx">
+  const cells = html.split(/id="n_(\d+)"/)
+  // cells: [before, id1, content1, id2, content2, ...]
+  for (let i = 1; i < cells.length; i += 2) {
+    const id = parseInt(cells[i])
+    const content = cells[i + 1] || ''
+
+    // Extract username from first /member/ link
+    const userMatch = content.match(/href="\/member\/([^"]+)"/)
+    const username = userMatch ? userMatch[1] : ''
+
+    // Extract avatar
+    const avatarMatch = content.match(/<img\s[^>]*src="([^"]*avatar[^"]*)"/)
+    const avatar = avatarMatch ? avatarMatch[1].replace(/^\/\//, 'https://') : ''
+
+    // Extract notification text (content of <span class="fade">)
+    const fadeMatch = content.match(/<span class="fade">([\s\S]*?)<\/span>/)
+    const text = fadeMatch ? fadeMatch[1].trim() : ''
+
+    // Extract payload (reply content)
+    const payloadMatch = content.match(/<div class="payload">([\s\S]*?)<\/div>/)
+    const payload = payloadMatch ? payloadMatch[1].trim() : ''
+
+    // Extract time from <span class="snow">
+    const timeMatch = content.match(/<span class="snow">([\s\S]*?)<\/span>/)
+    const created = parseRelativeTime(timeMatch ? timeMatch[1] : '')
+
+    if (username || text) {
+      notifications.push({
+        id,
+        member_id: 0,
+        for_member_id: 0,
+        text,
+        payload: '',
+        payload_rendered: payload,
+        created: Math.floor(created),
+        member: {
+          id: 0,
+          username,
+          url: '',
+          website: '',
+          twitter: '',
+          psn: '',
+          github: '',
+          btc: '',
+          location: '',
+          tagline: '',
+          bio: '',
+          avatar_mini: avatar,
+          avatar_normal: avatar,
+          avatar_large: avatar,
+          avatar,
+          created: 0,
+        },
+      })
+    }
+  }
+  return notifications
+}
+
+app.get('/web/notifications', async (req, res) => {
+  if (!verifySession(req)) return res.status(401).json({ error: '未登录' })
+  const cookie = getStoredCookie()
+  if (!cookie) return res.json({ success: true, result: [] })
+
+  const page = parseInt(req.query.p) || 1
+  try {
+    const notifications = await scrapeNotifications(cookie, page)
+    res.json({ success: true, result: notifications })
+  } catch (err) {
+    console.error('[web/notifications]', err)
+    res.json({ success: true, result: [] })
+  }
+})
+
 app.post('/web/reply', express.json({ limit: '16kb' }), async (req, res) => {
   if (!verifySession(req)) return res.status(401).json({ error: '未登录' })
   const cookie = getStoredCookie()

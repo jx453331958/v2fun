@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { formatDistanceToNow } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
-import { v1, v2 } from '../api/client'
+import { v1, web } from '../api/client'
 import { useAuth } from '../hooks/useAuth'
 import type { V2Notification } from '../types'
 import Loading from '../components/Loading'
@@ -55,7 +55,7 @@ export default function Notifications() {
     if (!isLoggedIn) return
     setLoading(true)
     try {
-      const res = await v2.notifications(1)
+      const res = await web.notifications(1)
       if (res.success) {
         const list = res.result || []
         setFirstPageNotifications(list)
@@ -78,7 +78,7 @@ export default function Notifications() {
 
   const fetchPage = useCallback(
     async (page: number) => {
-      const res = await v2.notifications(page)
+      const res = await web.notifications(page)
       if (res.success) return res.result || []
       return []
     },
