@@ -20,7 +20,7 @@
 
 ```bash
 # 下载并运行（无参数进入交互式管理面板）
-bash <(curl -sL https://raw.githubusercontent.com/jx453331958/v2fun/main/v2fun.sh)
+bash <(curl -sL "https://raw.githubusercontent.com/jx453331958/v2fun/main/v2fun.sh")
 ```
 
 脚本会引导你完成安装：选择安装目录、设置端口、确认后自动构建部署。
