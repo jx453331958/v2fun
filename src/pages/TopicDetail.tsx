@@ -1,13 +1,14 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useLocation } from 'react-router-dom'
 import { formatDistanceToNow } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
-import { v1, getTopicWebUrl } from '../api/client'
+import { v1, web, getTopicWebUrl } from '../api/client'
 import type { V2Topic, V2Reply } from '../types'
 import Header from '../components/Header'
 import ReplyItem from '../components/ReplyItem'
 import Loading from '../components/Loading'
 import PullToRefreshIndicator from '../components/PullToRefreshIndicator'
+import { useAuth } from '../hooks/useAuth'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { useInfiniteScroll } from '../hooks/useInfiniteScroll'
 import { sanitizeHtml } from '../utils/sanitize'
@@ -18,10 +19,17 @@ const PAGE_SIZE = 100
 export default function TopicDetail() {
   const { id } = useParams<{ id: string }>()
   const location = useLocation()
+  const { hasCookie } = useAuth()
   const [topic, setTopic] = useState<V2Topic | null>(null)
   const [firstPageReplies, setFirstPageReplies] = useState<V2Reply[]>([])
   const [loading, setLoading] = useState(true)
   const [highlightFloor, setHighlightFloor] = useState<number | null>(null)
+  const [replyContent, setReplyContent] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [thankedTopic, setThankedTopic] = useState(false)
+  const [thankingTopic, setThankingTopic] = useState(false)
+  const [replyError, setReplyError] = useState('')
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const scrollToFloor = (location.state as { scrollToFloor?: number } | null)?.scrollToFloor
 
@@ -113,6 +121,48 @@ export default function TopicDetail() {
     window.open(getTopicWebUrl(parseInt(id)), '_blank')
   }
 
+  const handleSubmitReply = async () => {
+    if (!id || !replyContent.trim() || submitting) return
+    setSubmitting(true)
+    setReplyError('')
+    try {
+      const res = await web.reply(parseInt(id), replyContent.trim())
+      if (res.success) {
+        setReplyContent('')
+        textareaRef.current?.blur()
+        // Refresh to show new reply
+        reset()
+        await fetchData()
+      } else if (res.error === 'cookie_expired') {
+        setReplyError('Cookie 已过期，请在个人页重新设置')
+      } else {
+        setReplyError(res.message || '回复失败')
+      }
+    } catch {
+      setReplyError('网络错误')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleThankTopic = async () => {
+    if (!id || thankingTopic || thankedTopic) return
+    if (!hasCookie) {
+      openInV2EX()
+      return
+    }
+    setThankingTopic(true)
+    try {
+      const res = await web.thankTopic(parseInt(id))
+      if (res.success) {
+        setThankedTopic(true)
+      } else if (res.error === 'cookie_expired') {
+        alert('Cookie 已过期，请在个人页重新设置')
+      }
+    } catch { /* ignore */ }
+    setThankingTopic(false)
+  }
+
   if (loading && status === 'idle') {
     return (
       <div className={styles.page}>
@@ -170,13 +220,14 @@ export default function TopicDetail() {
 
           <div className={styles.topicActions}>
             <button
-              className={styles.actionBtn}
-              onClick={openInV2EX}
+              className={`${styles.actionBtn} ${thankedTopic ? styles.thanked : ''}`}
+              onClick={handleThankTopic}
+              disabled={thankingTopic || thankedTopic}
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill={thankedTopic ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8">
                 <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
               </svg>
-              感谢
+              {thankedTopic ? '已感谢' : '感谢'}
             </button>
             <span className={styles.replyCount}>
               {topic.replies} 条回复
@@ -196,6 +247,7 @@ export default function TopicDetail() {
                   floor={i + 1}
                   topicId={parseInt(id!)}
                   highlight={highlightFloor === i + 1}
+                  hasCookie={hasCookie}
                 />
               ))}
               <div ref={sentinelRef} />
@@ -209,12 +261,46 @@ export default function TopicDetail() {
       </div>
 
       <div className={styles.replyBar}>
-        <button className={styles.replyWebBtn} onClick={openInV2EX}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" />
-          </svg>
-          在 V2EX 中回复
-        </button>
+        {hasCookie ? (
+          <div className={styles.replyInputRow}>
+            <textarea
+              ref={textareaRef}
+              className={styles.textarea}
+              rows={1}
+              placeholder="写回复..."
+              value={replyContent}
+              onChange={e => { setReplyContent(e.target.value); setReplyError('') }}
+              onInput={e => {
+                const el = e.currentTarget
+                el.style.height = 'auto'
+                el.style.height = Math.min(el.scrollHeight, 120) + 'px'
+              }}
+              disabled={submitting}
+            />
+            <button
+              className={styles.sendBtn}
+              onClick={handleSubmitReply}
+              disabled={submitting || !replyContent.trim()}
+            >
+              {submitting ? (
+                <span className={styles.sendSpinner} />
+              ) : (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="22" y1="2" x2="11" y2="13" />
+                  <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                </svg>
+              )}
+            </button>
+            {replyError && <p className={styles.replyError}>{replyError}</p>}
+          </div>
+        ) : (
+          <button className={styles.replyWebBtn} onClick={openInV2EX}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" />
+            </svg>
+            在 V2EX 中回复
+          </button>
+        )}
       </div>
     </div>
   )

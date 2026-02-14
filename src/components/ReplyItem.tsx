@@ -1,7 +1,8 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { formatDistanceToNow } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
-import { getTopicWebUrl } from '../api/client'
+import { web, getTopicWebUrl } from '../api/client'
 import type { V2Reply } from '../types'
 import { sanitizeHtml } from '../utils/sanitize'
 import styles from './ReplyItem.module.css'
@@ -11,19 +12,38 @@ interface Props {
   floor: number
   topicId: number
   highlight?: boolean
+  hasCookie?: boolean
 }
 
-export default function ReplyItem({ reply, floor, topicId, highlight }: Props) {
+export default function ReplyItem({ reply, floor, topicId, highlight, hasCookie }: Props) {
   const navigate = useNavigate()
+  const [thanked, setThanked] = useState(reply.thanked)
+  const [thanks, setThanks] = useState(reply.thanks)
+  const [thanking, setThanking] = useState(false)
 
   const timeAgo = formatDistanceToNow(new Date(reply.created * 1000), {
     locale: zhCN,
     addSuffix: true,
   })
 
-  const handleThank = (e: React.MouseEvent) => {
+  const handleThank = async (e: React.MouseEvent) => {
     e.stopPropagation()
-    window.open(getTopicWebUrl(topicId), '_blank')
+    if (thanked || thanking) return
+    if (!hasCookie) {
+      window.open(getTopicWebUrl(topicId), '_blank')
+      return
+    }
+    setThanking(true)
+    try {
+      const res = await web.thankReply(reply.id, topicId)
+      if (res.success) {
+        setThanked(true)
+        setThanks(prev => prev + 1)
+      } else if (res.error === 'cookie_expired') {
+        alert('Cookie 已过期，请在个人页重新设置')
+      }
+    } catch { /* ignore */ }
+    setThanking(false)
   }
 
   return (
@@ -59,13 +79,14 @@ export default function ReplyItem({ reply, floor, topicId, highlight }: Props) {
         />
         <div className={styles.actions}>
           <button
-            className={`${styles.thankBtn} ${reply.thanked ? styles.thanked : ''}`}
+            className={`${styles.thankBtn} ${thanked ? styles.thanked : ''}`}
             onClick={handleThank}
+            disabled={thanking || thanked}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill={reply.thanked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill={thanked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
             </svg>
-            {reply.thanks > 0 && <span>{reply.thanks}</span>}
+            {thanks > 0 && <span>{thanks}</span>}
           </button>
         </div>
       </div>

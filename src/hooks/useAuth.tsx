@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
-import { v2 } from '../api/client'
+import { v2, web } from '../api/client'
 import type { V2Member } from '../types'
 
 interface AuthState {
@@ -9,6 +9,9 @@ interface AuthState {
   login: (token: string) => Promise<boolean>
   logout: () => void
   isLoggedIn: boolean
+  hasCookie: boolean
+  saveCookie: (cookie: string) => Promise<boolean>
+  clearCookie: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthState | null>(null)
@@ -30,10 +33,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem('v2fun_token'))
   const [member, setMember] = useState<V2Member | null>(null)
   const [loading, setLoading] = useState(true)
+  const [hasCookie, setHasCookie] = useState(false)
 
   // Restore token from server if localStorage is empty (e.g. after redeployment / new browser)
   useEffect(() => {
-    if (localStorage.getItem('v2fun_token')) return
+    if (localStorage.getItem('v2fun_token')) {
+      // Still check cookie status
+      web.getCookieStatus().then(d => setHasCookie(d.hasCookie)).catch(() => {})
+      return
+    }
 
     fetch('/auth/session')
       .then(res => res.json())
@@ -41,6 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (data.token) {
           localStorage.setItem('v2fun_token', data.token)
           setToken(data.token)
+          web.getCookieStatus().then(d => setHasCookie(d.hasCookie)).catch(() => {})
         } else {
           setLoading(false)
         }
@@ -94,15 +103,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const saveCookie = async (cookie: string) => {
+    try {
+      const res = await web.saveCookie(cookie)
+      if (res.success) {
+        setHasCookie(true)
+        return true
+      }
+      return false
+    } catch {
+      return false
+    }
+  }
+
+  const clearCookie = async () => {
+    try {
+      await web.clearCookie()
+    } catch { /* ignore */ }
+    setHasCookie(false)
+  }
+
   const logout = () => {
     localStorage.removeItem('v2fun_token')
     setToken(null)
     setMember(null)
+    setHasCookie(false)
     clearTokenFromServer()
   }
 
   return (
-    <AuthContext.Provider value={{ token, member, loading, login, logout, isLoggedIn: !!member }}>
+    <AuthContext.Provider value={{ token, member, loading, login, logout, isLoggedIn: !!member, hasCookie, saveCookie, clearCookie }}>
       {children}
     </AuthContext.Provider>
   )

@@ -73,3 +73,52 @@ export function getTopicWebUrl(id: number) {
 export function getNewTopicWebUrl() {
   return 'https://www.v2ex.com/new'
 }
+
+// Web operations via server proxy (cookie-based)
+interface WebResult {
+  success: boolean
+  error?: string
+  message?: string
+}
+
+export const web = {
+  getCookieStatus: () =>
+    fetch('/auth/cookie', { credentials: 'same-origin' }).then(r => r.json()) as Promise<{ hasCookie: boolean }>,
+
+  saveCookie: (cookie: string) =>
+    fetch('/auth/cookie', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ cookie }),
+    }).then(r => r.json()) as Promise<WebResult>,
+
+  clearCookie: () =>
+    fetch('/auth/cookie', {
+      method: 'DELETE',
+      credentials: 'same-origin',
+    }).then(r => r.json()) as Promise<WebResult>,
+
+  reply: (topicId: number, content: string) =>
+    fetch('/web/reply', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ topicId, content }),
+    }).then(r => r.json()) as Promise<WebResult>,
+
+  thankTopic: (topicId: number) =>
+    fetch(`/web/thank/topic/${topicId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+    }).then(r => r.json()) as Promise<WebResult>,
+
+  thankReply: (replyId: number, topicId: number) =>
+    fetch(`/web/thank/reply/${replyId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ topicId }),
+    }).then(r => r.json()) as Promise<WebResult>,
+}

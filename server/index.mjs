@@ -14,6 +14,7 @@ const PORT = process.env.PORT || 3210
 const DATA_DIR = path.join(__dirname, '..', 'data')
 const SECRET_FILE = path.join(DATA_DIR, '.secret')
 const AUTH_FILE = path.join(DATA_DIR, 'auth.enc')
+const COOKIE_FILE = path.join(DATA_DIR, 'cookie.enc')
 
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true })
@@ -194,10 +195,188 @@ app.post('/auth/logout', (req, res) => {
   if (verifySession(req)) {
     try {
       if (fs.existsSync(AUTH_FILE)) fs.unlinkSync(AUTH_FILE)
+      if (fs.existsSync(COOKIE_FILE)) fs.unlinkSync(COOKIE_FILE)
     } catch { /* ignore */ }
   }
   setSessionCookie(res, '', 0)
   res.json({ success: true })
+})
+
+// ── V2EX Cookie management ──────────────────────────────────
+
+function getStoredCookie() {
+  if (!fs.existsSync(COOKIE_FILE)) return null
+  try {
+    const buf = fs.readFileSync(COOKIE_FILE)
+    return decrypt(buf)
+  } catch {
+    return null
+  }
+}
+
+async function fetchOnceToken(cookie, topicId) {
+  const url = `https://www.v2ex.com/t/${topicId}`
+  const res = await fetch(url, {
+    headers: {
+      'Cookie': `PB3_SESSION=${cookie}`,
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+    },
+    redirect: 'manual',
+  })
+  // 302 or non-200 means cookie expired / invalid
+  if (res.status >= 300) {
+    throw new Error('cookie_expired')
+  }
+  const html = await res.text()
+  // V2EX embeds once token in forms and AJAX URLs
+  const match = html.match(/once=(\d+)/) || html.match(/name="once" value="(\d+)"/)
+  if (!match) {
+    throw new Error('cookie_expired')
+  }
+  return match[1]
+}
+
+app.post('/auth/cookie', express.json({ limit: '4kb' }), (req, res) => {
+  if (!verifySession(req)) return res.status(401).json({ error: '未登录' })
+  const { cookie } = req.body
+  if (!cookie || typeof cookie !== 'string' || cookie.length > 1024) {
+    return res.status(400).json({ error: 'Invalid cookie' })
+  }
+  try {
+    const buf = encrypt(cookie)
+    fs.writeFileSync(COOKIE_FILE, buf, { mode: 0o600 })
+    res.json({ success: true })
+  } catch {
+    res.status(500).json({ error: 'Failed to save cookie' })
+  }
+})
+
+app.get('/auth/cookie', (req, res) => {
+  if (!verifySession(req)) return res.json({ hasCookie: false })
+  res.json({ hasCookie: fs.existsSync(COOKIE_FILE) })
+})
+
+app.delete('/auth/cookie', (req, res) => {
+  if (!verifySession(req)) return res.status(401).json({ error: '未登录' })
+  try {
+    if (fs.existsSync(COOKIE_FILE)) fs.unlinkSync(COOKIE_FILE)
+  } catch { /* ignore */ }
+  res.json({ success: true })
+})
+
+// ── Web operation proxy (reply / thank) ─────────────────────
+
+const webLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 min
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: '操作过于频繁，请稍后重试' },
+})
+app.use('/web', webLimiter)
+
+app.post('/web/reply', express.json({ limit: '16kb' }), async (req, res) => {
+  if (!verifySession(req)) return res.status(401).json({ error: '未登录' })
+  const cookie = getStoredCookie()
+  if (!cookie) return res.json({ success: false, error: 'no_cookie' })
+
+  const { topicId, content } = req.body
+  if (!topicId || !content || typeof content !== 'string') {
+    return res.status(400).json({ error: '参数错误' })
+  }
+
+  try {
+    const once = await fetchOnceToken(cookie, topicId)
+    const formData = new URLSearchParams()
+    formData.append('content', content)
+    formData.append('once', once)
+
+    const postRes = await fetch(`https://www.v2ex.com/t/${topicId}`, {
+      method: 'POST',
+      headers: {
+        'Cookie': `PB3_SESSION=${cookie}`,
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Origin': 'https://www.v2ex.com',
+        'Referer': `https://www.v2ex.com/t/${topicId}`,
+      },
+      redirect: 'manual',
+    })
+
+    // V2EX redirects to the topic page on success (302)
+    if (postRes.status === 302 || postRes.status === 200) {
+      return res.json({ success: true })
+    }
+    res.json({ success: false, error: 'reply_failed', message: '回复失败，请稍后重试' })
+  } catch (err) {
+    if (err.message === 'cookie_expired') {
+      return res.json({ success: false, error: 'cookie_expired', message: 'Cookie 已过期，请重新设置' })
+    }
+    res.json({ success: false, error: 'unknown', message: '操作失败' })
+  }
+})
+
+app.post('/web/thank/topic/:id', express.json({ limit: '1kb' }), async (req, res) => {
+  if (!verifySession(req)) return res.status(401).json({ error: '未登录' })
+  const cookie = getStoredCookie()
+  if (!cookie) return res.json({ success: false, error: 'no_cookie' })
+
+  const topicId = req.params.id
+  try {
+    const once = await fetchOnceToken(cookie, topicId)
+    const thankRes = await fetch(`https://www.v2ex.com/thank/topic/${topicId}?once=${once}`, {
+      method: 'POST',
+      headers: {
+        'Cookie': `PB3_SESSION=${cookie}`,
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+        'Referer': `https://www.v2ex.com/t/${topicId}`,
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+    })
+    const data = await thankRes.json().catch(() => ({}))
+    if (thankRes.ok && data.success !== false) {
+      return res.json({ success: true })
+    }
+    res.json({ success: false, error: 'thank_failed', message: '感谢失败' })
+  } catch (err) {
+    if (err.message === 'cookie_expired') {
+      return res.json({ success: false, error: 'cookie_expired', message: 'Cookie 已过期，请重新设置' })
+    }
+    res.json({ success: false, error: 'unknown', message: '操作失败' })
+  }
+})
+
+app.post('/web/thank/reply/:id', express.json({ limit: '1kb' }), async (req, res) => {
+  if (!verifySession(req)) return res.status(401).json({ error: '未登录' })
+  const cookie = getStoredCookie()
+  if (!cookie) return res.json({ success: false, error: 'no_cookie' })
+
+  const replyId = req.params.id
+  const { topicId } = req.body
+  if (!topicId) return res.status(400).json({ error: '参数错误' })
+
+  try {
+    const once = await fetchOnceToken(cookie, topicId)
+    const thankRes = await fetch(`https://www.v2ex.com/thank/reply/${replyId}?once=${once}`, {
+      method: 'POST',
+      headers: {
+        'Cookie': `PB3_SESSION=${cookie}`,
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+        'Referer': `https://www.v2ex.com/t/${topicId}`,
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+    })
+    const data = await thankRes.json().catch(() => ({}))
+    if (thankRes.ok && data.success !== false) {
+      return res.json({ success: true })
+    }
+    res.json({ success: false, error: 'thank_failed', message: '感谢失败' })
+  } catch (err) {
+    if (err.message === 'cookie_expired') {
+      return res.json({ success: false, error: 'cookie_expired', message: 'Cookie 已过期，请重新设置' })
+    }
+    res.json({ success: false, error: 'unknown', message: '操作失败' })
+  }
 })
 
 // ── Proxy /api/* → https://www.v2ex.com/api/* ─────────────
