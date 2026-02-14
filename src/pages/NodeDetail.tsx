@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import { v1, v2 } from '../api/client'
-import { useAuth } from '../hooks/useAuth'
 import type { V2Topic, V2Node } from '../types'
 import Header from '../components/Header'
 import TopicCard from '../components/TopicCard'
@@ -13,7 +12,6 @@ import styles from './NodeDetail.module.css'
 
 export default function NodeDetail() {
   const { name } = useParams<{ name: string }>()
-  const { isLoggedIn } = useAuth()
   const [node, setNode] = useState<V2Node | null>(null)
   const [firstPageTopics, setFirstPageTopics] = useState<V2Topic[]>([])
   const [loading, setLoading] = useState(true)
@@ -48,17 +46,15 @@ export default function NodeDetail() {
       const nodeInfo = await v1.nodeInfo(name)
       setNode(nodeInfo)
 
-      if (isLoggedIn) {
-        try {
-          const res = await v2.nodeTopics(name, 1)
-          if (res.success) {
-            setFirstPageTopics(res.result || [])
-            setUseV2(true)
-            return
-          }
-        } catch {
-          // V2 failed, fall through to V1
+      try {
+        const res = await v2.nodeTopics(name, 1)
+        if (res.success) {
+          setFirstPageTopics(res.result || [])
+          setUseV2(true)
+          return
         }
+      } catch {
+        // V2 failed, fall through to V1
       }
 
       const topics = await v1.topicsByNode(name)
@@ -68,7 +64,7 @@ export default function NodeDetail() {
     } finally {
       setLoading(false)
     }
-  }, [name, isLoggedIn])
+  }, [name])
 
   useEffect(() => {
     fetchData()
@@ -94,10 +90,10 @@ export default function NodeDetail() {
           <Loading />
         ) : (
           <>
-            {node?.header?.trim() && (
+            {node?.header?.replace(/<[^>]*>/g, '').trim() && (
               <div
                 className={styles.nodeHeader}
-                dangerouslySetInnerHTML={{ __html: node.header }}
+                dangerouslySetInnerHTML={{ __html: node!.header }}
               />
             )}
             <div className={styles.topicCount}>
@@ -106,7 +102,7 @@ export default function NodeDetail() {
             {allTopics.map((topic, i) => (
               <TopicCard key={topic.id} topic={topic} index={i} />
             ))}
-            {useV2 && (
+            {useV2 ? (
               <>
                 <div ref={sentinelRef} />
                 {isLoadingMore && <Loading text="加载更多..." />}
@@ -114,6 +110,10 @@ export default function NodeDetail() {
                   <div className={styles.noMore}>没有更多了</div>
                 )}
               </>
+            ) : (
+              allTopics.length > 0 && (
+                <div className={styles.noMore}>没有更多了</div>
+              )
             )}
             {allTopics.length === 0 && (
               <div className={styles.empty}>该节点暂无主题</div>
