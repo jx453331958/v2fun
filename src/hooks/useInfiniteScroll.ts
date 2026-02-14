@@ -7,6 +7,8 @@ interface UseInfiniteScrollOptions<T> {
   pageSize?: number
   /** Whether to start loading immediately. Default: true */
   enabled?: boolean
+  /** If provided, use page < totalPages to determine hasMore instead of pageSize */
+  totalPages?: number
 }
 
 interface UseInfiniteScrollReturn<T> {
@@ -24,6 +26,7 @@ export function useInfiniteScroll<T>({
   fetchPage,
   pageSize = 100,
   enabled = true,
+  totalPages,
 }: UseInfiniteScrollOptions<T>): UseInfiniteScrollReturn<T> {
   const [items, setItems] = useState<T[]>([])
   const [page, setPage] = useState(1)
@@ -48,14 +51,16 @@ export function useInfiniteScroll<T>({
       const newItems = await fetchPage(nextPage)
       setItems((prev) => [...prev, ...newItems])
       setPage(nextPage)
-      if (newItems.length < pageSize) {
+      if (totalPages != null) {
+        if (nextPage >= totalPages) setHasMore(false)
+      } else if (newItems.length < pageSize) {
         setHasMore(false)
       }
     } finally {
       loadingRef.current = false
       setIsLoadingMore(false)
     }
-  }, [fetchPage, pageSize])
+  }, [fetchPage, pageSize, totalPages])
 
   const sentinelRef = useCallback(
     (node: HTMLDivElement | null) => {
@@ -98,7 +103,9 @@ export function useInfiniteScroll<T>({
       for (let p = 1; p <= targetPage; p++) {
         const pageItems = await fetchPage(p)
         allItems = [...allItems, ...pageItems]
-        if (pageItems.length < pageSize) {
+        if (totalPages != null) {
+          if (p >= totalPages) { setHasMore(false); break }
+        } else if (pageItems.length < pageSize) {
           setHasMore(false)
           break
         }
@@ -108,7 +115,7 @@ export function useInfiniteScroll<T>({
       loadingRef.current = false
       return allItems
     },
-    [fetchPage, pageSize]
+    [fetchPage, pageSize, totalPages]
   )
 
   return {

@@ -22,6 +22,7 @@ export default function TopicDetail() {
   const { isLoggedIn } = useAuth()
   const [topic, setTopic] = useState<V2Topic | null>(null)
   const [firstPageReplies, setFirstPageReplies] = useState<V2Reply[]>([])
+  const [totalPages, setTotalPages] = useState(1)
   const [loading, setLoading] = useState(true)
   const [highlightFloor, setHighlightFloor] = useState<number | null>(null)
   const [replyContent, setReplyContent] = useState('')
@@ -36,7 +37,8 @@ export default function TopicDetail() {
   const fetchRepliesPage = useCallback(
     async (page: number) => {
       if (!id) return []
-      return v1.replies(parseInt(id), page)
+      const data = await web.replies(parseInt(id), page)
+      return data.result
     },
     [id]
   )
@@ -45,7 +47,8 @@ export default function TopicDetail() {
     useInfiniteScroll<V2Reply>({
       fetchPage: fetchRepliesPage,
       pageSize: PAGE_SIZE,
-      enabled: !loading && firstPageReplies.length >= PAGE_SIZE,
+      enabled: !loading && totalPages > 1,
+      totalPages,
     })
 
   const allReplies = [...firstPageReplies, ...moreReplies]
@@ -55,12 +58,13 @@ export default function TopicDetail() {
     const topicId = parseInt(id)
     setLoading(true)
     try {
-      const [t, r] = await Promise.all([
+      const [t, repliesData] = await Promise.all([
         v1.topicById(topicId).then((arr) => arr[0]),
-        v1.replies(topicId, 1),
+        web.replies(topicId, 1),
       ])
       setTopic(t)
-      setFirstPageReplies(r)
+      setFirstPageReplies(repliesData.result)
+      setTotalPages(repliesData.totalPages)
     } finally {
       setLoading(false)
     }
@@ -163,6 +167,12 @@ export default function TopicDetail() {
     setThankingTopic(false)
   }
 
+  const handleReplyTo = useCallback((username: string, floor: number) => {
+    const mention = `@${username} #${floor} `
+    setReplyContent(prev => prev + mention)
+    textareaRef.current?.focus()
+  }, [])
+
   if (loading && status === 'idle') {
     return (
       <div className={styles.page}>
@@ -248,6 +258,7 @@ export default function TopicDetail() {
                   topicId={parseInt(id!)}
                   highlight={highlightFloor === i + 1}
                   hasCookie={isLoggedIn}
+                  onReplyTo={isLoggedIn ? handleReplyTo : undefined}
                 />
               ))}
               <div ref={sentinelRef} />

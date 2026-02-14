@@ -394,6 +394,138 @@ async function scrapeNotifications(cookie, page) {
   return notifications
 }
 
+/** Scrape V2EX topic page and return parsed replies + totalPages */
+async function scrapeReplies(topicId, page, cookie) {
+  const url = `https://www.v2ex.com/t/${topicId}?p=${page}`
+  const headers = {
+    'User-Agent': V2EX_UA,
+    'Accept': 'text/html,application/xhtml+xml',
+  }
+  if (cookie) {
+    headers['Cookie'] = buildCookieHeader(cookie)
+  }
+  const res = await fetch(url, { headers, redirect: 'manual' })
+  if (res.status >= 300) {
+    return { replies: [], totalPages: 1 }
+  }
+  const html = await res.text()
+
+  // Extract total pages from pagination
+  let totalPages = 1
+  const pageInputMatch = html.match(/<input[^>]*class="page_input"[^>]*max="(\d+)"/)
+  if (pageInputMatch) {
+    totalPages = parseInt(pageInputMatch[1])
+  } else {
+    const pageLinks = html.match(/<a[^>]*class="page_normal"[^>]*>(\d+)<\/a>/g)
+    if (pageLinks) {
+      for (const link of pageLinks) {
+        const n = parseInt(link.match(/>(\d+)</)[1])
+        if (n > totalPages) totalPages = n
+      }
+    }
+    // Also check current page indicator
+    const pageCurrent = html.match(/<span class="page_current">(\d+)<\/span>/)
+    if (pageCurrent) {
+      const n = parseInt(pageCurrent[1])
+      if (n > totalPages) totalPages = n
+    }
+  }
+
+  // Split by reply cells: id="r_12345"
+  const replies = []
+  const cells = html.split(/id="r_(\d+)"/)
+  // cells: [before, id1, content1, id2, content2, ...]
+  for (let i = 1; i < cells.length; i += 2) {
+    const replyId = parseInt(cells[i])
+    const content = cells[i + 1] || ''
+
+    // Extract username
+    const userMatch = content.match(/<strong><a href="\/member\/([^"]+)"/)
+    const username = userMatch ? userMatch[1] : ''
+
+    // Extract avatar
+    const avatarMatch = content.match(/<img[^>]*class="avatar"[^>]*src="([^"]*)"/)
+    if (!avatarMatch) {
+      // Try alternate avatar pattern
+      const altAvatar = content.match(/<img[^>]*src="([^"]*avatar[^"]*)"/)
+      var avatarUrl = altAvatar ? altAvatar[1] : ''
+    } else {
+      var avatarUrl = avatarMatch[1]
+    }
+    avatarUrl = avatarUrl.replace(/^\/\//, 'https://')
+
+    // Extract floor number
+    const floorMatch = content.match(/<span class="no">(\d+)<\/span>/)
+    const floor = floorMatch ? parseInt(floorMatch[1]) : 0
+
+    // Extract time
+    const timeMatch = content.match(/<span class="ago"[^>]*>([\s\S]*?)<\/span>/)
+    const created = parseRelativeTime(timeMatch ? timeMatch[1] : '')
+
+    // Extract reply content
+    const contentMatch = content.match(/<div class="reply_content">([\s\S]*?)<\/div>/)
+    const contentRendered = contentMatch ? contentMatch[1].trim() : ''
+
+    // Extract thanks count
+    const thanksMatch = content.match(/♥\s*(\d+)/)
+    const thanks = thanksMatch ? parseInt(thanksMatch[1]) : 0
+
+    // Check if thanked (presence of thanked class)
+    const thanked = content.includes('thanked')
+
+    if (username) {
+      replies.push({
+        id: replyId,
+        content: '',
+        content_rendered: contentRendered,
+        member: {
+          id: 0,
+          username,
+          url: '',
+          website: '',
+          twitter: '',
+          psn: '',
+          github: '',
+          btc: '',
+          location: '',
+          tagline: '',
+          bio: '',
+          avatar_mini: avatarUrl,
+          avatar_normal: avatarUrl,
+          avatar_large: avatarUrl,
+          avatar: avatarUrl,
+          created: 0,
+        },
+        created: Math.floor(created),
+        topic_id: topicId,
+        thanked,
+        thanks,
+      })
+    }
+  }
+
+  return { replies, totalPages }
+}
+
+app.get('/web/replies/:topicId', async (req, res) => {
+  const topicId = parseInt(req.params.topicId)
+  if (!topicId || isNaN(topicId)) {
+    return res.status(400).json({ error: '参数错误' })
+  }
+  const page = parseInt(req.query.p) || 1
+
+  // Use stored cookie if available (for thanked status), but don't require it
+  const cookie = verifySession(req) ? getStoredCookie() : null
+
+  try {
+    const { replies, totalPages } = await scrapeReplies(topicId, page, cookie)
+    res.json({ success: true, result: replies, totalPages })
+  } catch (err) {
+    console.error('[web/replies]', err)
+    res.json({ success: true, result: [], totalPages: 1 })
+  }
+})
+
 app.get('/web/notifications', async (req, res) => {
   if (!verifySession(req)) return res.status(401).json({ error: '未登录' })
   const cookie = getStoredCookie()

@@ -73,6 +73,21 @@
   gap: 16px;
 }
 
+.replyBtn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  color: var(--text-tertiary);
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: color 0.2s;
+}
+
+.replyBtn:active {
+  color: var(--accent);
+}
+
 .thankBtn {
   display: flex;
   align-items: center;

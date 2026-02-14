@@ -74,6 +74,10 @@ interface WebResult {
 }
 
 export const web = {
+  replies: (topicId: number, page = 1) =>
+    fetch(`/web/replies/${topicId}?p=${page}`, { credentials: 'same-origin' })
+      .then(r => r.json()) as Promise<{ success: boolean; result: V2Reply[]; totalPages: number }>,
+
   notifications: (page = 1) =>
     fetch(`/web/notifications?p=${page}`, { credentials: 'same-origin' })
       .then(r => r.json()) as Promise<{ success: boolean; result: V2Notification[] }>,

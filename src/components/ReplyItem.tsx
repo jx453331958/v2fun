@@ -13,9 +13,10 @@ interface Props {
   topicId: number
   highlight?: boolean
   hasCookie?: boolean
+  onReplyTo?: (username: string, floor: number) => void
 }
 
-export default function ReplyItem({ reply, floor, topicId, highlight, hasCookie }: Props) {
+export default function ReplyItem({ reply, floor, topicId, highlight, hasCookie, onReplyTo }: Props) {
   const navigate = useNavigate()
   const [thanked, setThanked] = useState(reply.thanked)
   const [thanks, setThanks] = useState(reply.thanks)
@@ -78,6 +79,16 @@ export default function ReplyItem({ reply, floor, topicId, highlight, hasCookie 
           dangerouslySetInnerHTML={{ __html: sanitizeHtml(reply.content_rendered) }}
         />
         <div className={styles.actions}>
+          {onReplyTo && (
+            <button
+              className={styles.replyBtn}
+              onClick={(e) => { e.stopPropagation(); onReplyTo(reply.member.username, floor) }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+              </svg>
+            </button>
+          )}
           <button
             className={`${styles.thankBtn} ${thanked ? styles.thanked : ''}`}
             onClick={handleThank}
