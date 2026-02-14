@@ -1,0 +1,9 @@
+services:
+  v2fun:
+    build: .
+    ports:
+      - "3210:3210"
+    environment:
+      - NODE_ENV=production
+      - PORT=3210
+    restart: unless-stopped

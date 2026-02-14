@@ -1,0 +1,93 @@
+.page {
+  min-height: 100dvh;
+}
+
+.header {
+  padding: 16px;
+  padding-top: calc(16px + var(--safe-top));
+  background: var(--bg-secondary);
+  border-bottom: 0.5px solid var(--border-light);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.list {
+  background: var(--bg-secondary);
+}
+
+.item {
+  display: flex;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 0.5px solid var(--border-light);
+}
+
+.itemAvatar {
+  flex-shrink: 0;
+}
+
+.itemAvatar img {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  background: var(--bg-tertiary);
+}
+
+.itemBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.itemText {
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.itemText a {
+  color: var(--accent);
+}
+
+.itemTime {
+  font-size: 0.72rem;
+  color: var(--text-tertiary);
+  margin-top: 4px;
+  display: block;
+}
+
+.empty {
+  padding: 64px 20px;
+  text-align: center;
+  color: var(--text-tertiary);
+  font-size: 0.9rem;
+}
+
+.loginPrompt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 64px 20px;
+  color: var(--text-tertiary);
+  font-size: 0.9rem;
+}
+
+.loginBtn {
+  padding: 10px 28px;
+  background: var(--accent);
+  color: white;
+  border-radius: var(--radius-lg);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.loginBtn:active {
+  background: var(--accent-hover);
+}

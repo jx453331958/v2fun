@@ -1,0 +1,18 @@
+{
+  "name": "V2Fun",
+  "short_name": "V2Fun",
+  "description": "V2EX 移动客户端",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F8F5F0",
+  "theme_color": "#F8F5F0",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/v2fun.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,0 +1,155 @@
+.page {
+  min-height: 100dvh;
+  background: var(--bg-primary);
+}
+
+.header {
+  position: relative;
+  overflow: hidden;
+}
+
+.headerBg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: calc(120px + var(--safe-top));
+  background: linear-gradient(135deg, var(--accent), #D4884A);
+}
+
+.profileCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 80px 20px 24px;
+  padding-top: calc(80px + var(--safe-top));
+}
+
+.avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 4px solid var(--bg-secondary);
+  box-shadow: var(--shadow-lg);
+  background: var(--bg-tertiary);
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.username {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-top: 12px;
+}
+
+.tagline {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-top: 4px;
+  text-align: center;
+}
+
+.joinDate {
+  font-size: 0.78rem;
+  color: var(--text-tertiary);
+  margin-top: 4px;
+}
+
+.content {
+  padding: 8px 16px 24px;
+}
+
+.section {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  margin-bottom: 12px;
+  border: 0.5px solid var(--border-light);
+}
+
+.sectionTitle {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 12px;
+}
+
+.bio {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.links {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  text-decoration: none;
+  padding: 6px 0;
+}
+
+.link svg {
+  flex-shrink: 0;
+  color: var(--text-tertiary);
+}
+
+.link span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.noLinks {
+  font-size: 0.85rem;
+  color: var(--text-tertiary);
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 4px 0;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.menuItem svg:first-child {
+  color: var(--text-tertiary);
+}
+
+.menuItem span {
+  flex: 1;
+  text-align: left;
+}
+
+.menuItem svg:last-child {
+  color: var(--text-tertiary);
+}
+
+.logoutBtn {
+  width: 100%;
+  padding: 4px;
+  font-size: 0.9rem;
+  color: var(--danger);
+  font-weight: 500;
+  text-align: center;
+}

@@ -1,0 +1,28 @@
+.page {
+  min-height: 100dvh;
+  background: var(--bg-primary);
+}
+
+.nodeHeader {
+  padding: 12px 16px;
+  background: var(--bg-secondary);
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  border-bottom: 0.5px solid var(--border-light);
+}
+
+.topicCount {
+  padding: 10px 16px;
+  font-size: 0.78rem;
+  color: var(--text-tertiary);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.empty {
+  padding: 64px 20px;
+  text-align: center;
+  color: var(--text-tertiary);
+  font-size: 0.9rem;
+}
