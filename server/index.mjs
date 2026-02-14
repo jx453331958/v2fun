@@ -34,9 +34,12 @@ function loadAppSecret() {
       return buf
     }
   }
-  // Priority 3: generate new random key (session will be lost on redeploy if volume is not persisted)
-  console.log('[secret] Generated new random key — set V2FUN_SECRET env var to persist across deployments')
-  const secret = crypto.randomBytes(32)
+  // Priority 3: generate new random key and prompt user to persist it
+  const generated = crypto.randomBytes(32).toString('hex')
+  console.log('[secret] ⚠️  No V2FUN_SECRET set. Generated a random key.')
+  console.log('[secret] To keep login across redeployments, create a .env file:')
+  console.log(`[secret]   echo "V2FUN_SECRET=${generated}" > .env`)
+  const secret = crypto.createHash('sha256').update(generated).digest()
   fs.writeFileSync(SECRET_FILE, secret, { mode: 0o600 })
   return secret
 }
