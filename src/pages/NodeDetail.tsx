@@ -17,36 +17,54 @@ export default function NodeDetail() {
   const [node, setNode] = useState<V2Node | null>(null)
   const [firstPageTopics, setFirstPageTopics] = useState<V2Topic[]>([])
   const [loading, setLoading] = useState(true)
+  const [useV2, setUseV2] = useState(false)
 
   const fetchPage = useCallback(
     async (page: number) => {
-      if (!name || !isLoggedIn) return []
-      const res = await v2.nodeTopics(name, page)
-      if (res.success) return res.result || []
+      if (!name) return []
+      try {
+        const res = await v2.nodeTopics(name, page)
+        if (res.success) return res.result || []
+      } catch {
+        // V2 pagination failed
+      }
       return []
     },
-    [name, isLoggedIn]
+    [name]
   )
 
   const { items: moreTopics, hasMore, isLoadingMore, sentinelRef, reset } =
     useInfiniteScroll<V2Topic>({
       fetchPage,
       pageSize: 20,
-      enabled: isLoggedIn && !loading,
+      enabled: useV2 && !loading,
     })
 
   const fetchData = useCallback(async () => {
     if (!name) return
     setLoading(true)
+    setUseV2(false)
     try {
-      const [n, t] = await Promise.all([
-        v1.nodeInfo(name),
-        isLoggedIn
-          ? v2.nodeTopics(name, 1).then((res) => (res.success ? res.result || [] : []))
-          : v1.topicsByNode(name),
-      ])
-      setNode(n)
-      setFirstPageTopics(t)
+      const nodeInfo = await v1.nodeInfo(name)
+      setNode(nodeInfo)
+
+      if (isLoggedIn) {
+        try {
+          const res = await v2.nodeTopics(name, 1)
+          if (res.success) {
+            setFirstPageTopics(res.result || [])
+            setUseV2(true)
+            return
+          }
+        } catch {
+          // V2 failed, fall through to V1
+        }
+      }
+
+      const topics = await v1.topicsByNode(name)
+      setFirstPageTopics(topics)
+    } catch {
+      // nodeInfo or V1 topics failed
     } finally {
       setLoading(false)
     }
@@ -88,7 +106,7 @@ export default function NodeDetail() {
             {allTopics.map((topic, i) => (
               <TopicCard key={topic.id} topic={topic} index={i} />
             ))}
-            {isLoggedIn && (
+            {useV2 && (
               <>
                 <div ref={sentinelRef} />
                 {isLoadingMore && <Loading text="加载更多..." />}
