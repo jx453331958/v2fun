@@ -21,8 +21,11 @@ app.use((req, res, next) => {
 
 // Proxy /api/* → https://www.v2ex.com/api/*
 // IMPORTANT: no body-parsing middleware before this — raw stream forwarding
+// NOTE: use pathFilter instead of app.use('/api', ...) so that the full
+//       request path (including /api prefix) is preserved when forwarding.
 const v2exProxy = createProxyMiddleware({
   target: 'https://www.v2ex.com',
+  pathFilter: '/api',
   changeOrigin: true,
   secure: true,
   timeout: 30000,
@@ -59,7 +62,7 @@ const v2exProxy = createProxyMiddleware({
   },
 })
 
-app.use('/api', v2exProxy)
+app.use(v2exProxy)
 
 // Serve built frontend
 const distPath = path.join(__dirname, '..', 'dist')
