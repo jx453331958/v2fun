@@ -74,6 +74,10 @@ interface WebResult {
 }
 
 export const web = {
+  nodeTopics: (nodeName: string, page = 1) =>
+    fetch(`/web/node/${encodeURIComponent(nodeName)}?p=${page}`, { credentials: 'same-origin' })
+      .then(r => r.json()) as Promise<{ success: boolean; result: V2Topic[]; totalPages: number }>,
+
   replies: (topicId: number, page = 1) =>
     fetch(`/web/replies/${topicId}?p=${page}`, { credentials: 'same-origin' })
       .then(r => r.json()) as Promise<{ success: boolean; result: V2Reply[]; totalPages: number }>,

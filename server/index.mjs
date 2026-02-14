@@ -507,6 +507,160 @@ async function scrapeReplies(topicId, page, cookie) {
   return { replies, totalPages }
 }
 
+/** Scrape V2EX node page and return parsed topics + totalPages */
+async function scrapeNodeTopics(nodeName, page, cookie) {
+  const url = `https://www.v2ex.com/go/${encodeURIComponent(nodeName)}?p=${page}`
+  const headers = {
+    'User-Agent': V2EX_UA,
+    'Accept': 'text/html,application/xhtml+xml',
+  }
+  if (cookie) {
+    headers['Cookie'] = buildCookieHeader(cookie)
+  }
+  const res = await fetch(url, { headers, redirect: 'manual' })
+  if (res.status >= 300) {
+    return { topics: [], totalPages: 1 }
+  }
+  const html = await res.text()
+
+  // Extract total pages from pagination
+  let totalPages = 1
+  const pageInputMatch = html.match(/<input[^>]*class="page_input"[^>]*max="(\d+)"/)
+  if (pageInputMatch) {
+    totalPages = parseInt(pageInputMatch[1])
+  } else {
+    const pageLinks = html.match(/<a[^>]*class="page_normal"[^>]*>(\d+)<\/a>/g)
+    if (pageLinks) {
+      for (const link of pageLinks) {
+        const n = parseInt(link.match(/>(\d+)</)[1])
+        if (n > totalPages) totalPages = n
+      }
+    }
+  }
+
+  // Parse topics by splitting on item_title markers
+  // Split pattern: <span class="item_title"><a href="/t/{ID}
+  // With capturing group, split produces: [preamble, id1, content1, id2, content2, ...]
+  const topics = []
+  const parts = html.split(/<span class="item_title"><a href="\/t\/(\d+)/)
+
+  for (let i = 1; i < parts.length; i += 2) {
+    const topicId = parseInt(parts[i])
+    const after = parts[i + 1] || ''
+    const before = parts[i - 1] || ''
+
+    // Title: continues from the <a> tag after the topic ID
+    const titleMatch = after.match(/[^"]*"[^>]*>([\s\S]*?)<\/a>/)
+    const title = titleMatch ? titleMatch[1].replace(/<[^>]*>/g, '').trim() : ''
+
+    // Avatar: last <img> in the section before this item_title
+    const avatarSection = before.slice(-600)
+    let avatarUrl = ''
+    const allImgs = [...avatarSection.matchAll(/<img[^>]*src="([^"]*)"[^>]*>/g)]
+    if (allImgs.length > 0) {
+      avatarUrl = allImgs[allImgs.length - 1][1]
+    }
+    avatarUrl = avatarUrl.replace(/^\/\//, 'https://')
+
+    // Username: last /member/ link before item_title
+    const memberMatches = [...avatarSection.matchAll(/href="\/member\/([^"]+)"/g)]
+    const username = memberMatches.length > 0
+      ? memberMatches[memberMatches.length - 1][1]
+      : ''
+
+    // Reply count
+    const replyMatch = after.match(/class="count_(?:livid|orange)"[^>]*>(\d+)<\/a>/)
+    const replies = replyMatch ? parseInt(replyMatch[1]) : 0
+
+    // Last reply by
+    const lastReplyMatch = after.match(/最后回复来自\s*<strong><a href="\/member\/([^"]+)"/)
+    const lastReplyBy = lastReplyMatch ? lastReplyMatch[1] : ''
+
+    // Created time: prefer absolute time from title attribute
+    const timeMatch = after.match(/<span title="([^"]+)">/)
+    let created = 0
+    if (timeMatch) {
+      created = Math.floor(new Date(timeMatch[1]).getTime() / 1000)
+    }
+    if (!created || isNaN(created)) {
+      created = Math.floor(parseRelativeTime(after))
+    }
+
+    // Node info from the a.node link
+    const nodeMatch = after.match(/<a class="node" href="\/go\/([^"]+)">([^<]+)<\/a>/)
+
+    if (title) {
+      topics.push({
+        id: topicId,
+        title,
+        url: `https://www.v2ex.com/t/${topicId}`,
+        content: '',
+        content_rendered: '',
+        syntax: 0,
+        replies,
+        member: {
+          id: 0,
+          username,
+          url: '',
+          website: '',
+          twitter: '',
+          psn: '',
+          github: '',
+          btc: '',
+          location: '',
+          tagline: '',
+          bio: '',
+          avatar_mini: avatarUrl,
+          avatar_normal: avatarUrl,
+          avatar_large: avatarUrl,
+          avatar: avatarUrl,
+          created: 0,
+        },
+        node: {
+          id: 0,
+          name: nodeMatch ? nodeMatch[1] : nodeName,
+          url: '',
+          title: nodeMatch ? nodeMatch[2] : nodeName,
+          title_alternative: '',
+          topics: 0,
+          stars: 0,
+          header: '',
+          footer: '',
+          avatar: '',
+          avatar_mini: '',
+          avatar_normal: '',
+          avatar_large: '',
+        },
+        created,
+        last_modified: created,
+        last_touched: created,
+        last_reply_by: lastReplyBy,
+      })
+    }
+  }
+
+  return { topics, totalPages }
+}
+
+app.get('/web/node/:nodeName', async (req, res) => {
+  const nodeName = req.params.nodeName
+  if (!nodeName) {
+    return res.status(400).json({ error: '参数错误' })
+  }
+  const page = parseInt(req.query.p) || 1
+
+  // Use stored cookie if available, but don't require it
+  const cookie = verifySession(req) ? getStoredCookie() : null
+
+  try {
+    const { topics, totalPages } = await scrapeNodeTopics(nodeName, page, cookie)
+    res.json({ success: true, result: topics, totalPages })
+  } catch (err) {
+    console.error('[web/node]', err)
+    res.json({ success: true, result: [], totalPages: 1 })
+  }
+})
+
 app.get('/web/replies/:topicId', async (req, res) => {
   const topicId = parseInt(req.params.topicId)
   if (!topicId || isNaN(topicId)) {
