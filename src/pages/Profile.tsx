@@ -9,6 +9,9 @@ import styles from './Profile.module.css'
 export default function Profile() {
   const { member, loading, logout, isLoggedIn, hasCookie, saveCookie, clearCookie } = useAuth()
   const navigate = useNavigate()
+  const [cookieInput, setCookieInput] = useState('')
+  const [cookieSaving, setCookieSaving] = useState(false)
+  const [cookieMsg, setCookieMsg] = useState('')
 
   if (loading) return <Loading />
 
@@ -21,10 +24,6 @@ export default function Profile() {
     locale: zhCN,
     addSuffix: true,
   })
-
-  const [cookieInput, setCookieInput] = useState('')
-  const [cookieSaving, setCookieSaving] = useState(false)
-  const [cookieMsg, setCookieMsg] = useState('')
 
   const handleSaveCookie = async () => {
     const value = cookieInput.trim()
