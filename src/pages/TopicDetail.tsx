@@ -106,7 +106,7 @@ export default function TopicDetail() {
     }
   }
 
-  const { pullDistance, isRefreshing, pullStyle } = usePullToRefresh({
+  const { pullDistance, status, pullStyle } = usePullToRefresh({
     onRefresh: async () => {
       reset()
       await fetchData()
@@ -171,7 +171,7 @@ export default function TopicDetail() {
     }
   }, [])
 
-  if (loading && !isRefreshing) {
+  if (loading && status === 'idle') {
     return (
       <div className={styles.page}>
         <Header title="主题详情" showBack />
@@ -198,7 +198,7 @@ export default function TopicDetail() {
     <div className={styles.page}>
       <Header title={topic.node?.title || '主题详情'} showBack />
 
-      <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} />
+      <PullToRefreshIndicator pullDistance={pullDistance} status={status} />
 
       <div style={pullStyle}>
         <article className={styles.topic}>

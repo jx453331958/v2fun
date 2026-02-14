@@ -58,7 +58,7 @@ export default function Notifications() {
 
   const allNotifications = [...firstPageNotifications, ...moreNotifications]
 
-  const { pullDistance, isRefreshing, pullStyle } = usePullToRefresh({
+  const { pullDistance, status, pullStyle } = usePullToRefresh({
     onRefresh: async () => {
       reset()
       await fetchFirstPage()
@@ -116,10 +116,10 @@ export default function Notifications() {
         <h1 className={styles.title}>通知</h1>
       </div>
 
-      <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} />
+      <PullToRefreshIndicator pullDistance={pullDistance} status={status} />
 
       <div style={pullStyle}>
-        {loading && !isRefreshing ? (
+        {loading && status === 'idle' ? (
           <Loading />
         ) : allNotifications.length === 0 ? (
           <div className={styles.empty}>暂无通知</div>

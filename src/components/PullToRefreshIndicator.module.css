@@ -1,34 +1,126 @@
 .container {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
   overflow: hidden;
+  padding-bottom: 4px;
 }
 
-.indicator {
+.inner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
 }
 
-.arrow {
+.text {
+  font-size: 0.72rem;
+  font-family: var(--font-mono);
+  color: var(--text-tertiary);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  transition: color 0.2s;
+}
+
+/* State-specific text colors */
+.ready .text {
   color: var(--accent);
-  transition: none;
 }
 
-.spinner {
-  width: 20px;
-  height: 20px;
-  border: 2px solid var(--border);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  animation: spin 0.6s linear infinite;
+.refreshing .text {
+  color: var(--text-secondary);
+}
+
+.success .text {
+  color: var(--success);
+}
+
+.error .text {
+  color: var(--danger);
+}
+
+/* Progress ring — no extra animation needed, driven by dashoffset */
+.ring {
+  display: block;
+}
+
+/* Ready state: checkmark appears */
+.readyCheck {
+  animation: checkDraw 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  stroke-dasharray: 20;
+  stroke-dashoffset: 20;
+}
+
+@keyframes checkDraw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Refreshing: spinning partial ring */
+.spinRing {
+  display: block;
+  animation: spin 0.8s linear infinite;
 }
 
 @keyframes spin {
   to {
     transform: rotate(360deg);
   }
+}
+
+/* Success: ring draws in, then check draws */
+.successIcon {
+  animation: successPop 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.successRing {
+  stroke-dasharray: 57;
+  stroke-dashoffset: 57;
+  animation: ringDraw 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.successCheck {
+  stroke-dasharray: 20;
+  stroke-dashoffset: 20;
+  animation: checkDraw 0.25s cubic-bezier(0.4, 0, 0.2, 1) 0.2s forwards;
+}
+
+@keyframes ringDraw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes successPop {
+  0% {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Error: shake + appear */
+.errorIcon {
+  animation: errorShake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+
+@keyframes errorShake {
+  0% { transform: scale(0.5); opacity: 0; }
+  30% { transform: scale(1.05) translateX(-2px); opacity: 1; }
+  50% { transform: translateX(2px); }
+  70% { transform: translateX(-1px); }
+  100% { transform: translateX(0); }
 }

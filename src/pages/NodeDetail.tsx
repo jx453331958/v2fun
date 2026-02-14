@@ -76,7 +76,7 @@ export default function NodeDetail() {
 
   const allTopics = [...firstPageTopics, ...moreTopics]
 
-  const { pullDistance, isRefreshing, pullStyle } = usePullToRefresh({
+  const { pullDistance, status, pullStyle } = usePullToRefresh({
     onRefresh: async () => {
       reset()
       await fetchData()
@@ -87,10 +87,10 @@ export default function NodeDetail() {
     <div className={styles.page}>
       <Header title={node?.title || name || '节点'} showBack />
 
-      <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} />
+      <PullToRefreshIndicator pullDistance={pullDistance} status={status} />
 
       <div style={pullStyle}>
-        {loading && !isRefreshing ? (
+        {loading && status === 'idle' ? (
           <Loading />
         ) : (
           <>

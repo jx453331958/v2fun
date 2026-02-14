@@ -32,7 +32,7 @@ export default function Home() {
     fetchTopics(tab)
   }, [tab, fetchTopics])
 
-  const { pullDistance, isRefreshing, pullStyle } = usePullToRefresh({
+  const { pullDistance, status, pullStyle } = usePullToRefresh({
     onRefresh: async () => {
       await fetchTopics(tab)
     },
@@ -62,10 +62,10 @@ export default function Home() {
         </div>
       </header>
 
-      <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} />
+      <PullToRefreshIndicator pullDistance={pullDistance} status={status} />
 
       <div style={pullStyle}>
-        {loading && !isRefreshing ? (
+        {loading && status === 'idle' ? (
           <TopicSkeleton />
         ) : error ? (
           <div className={styles.error}>

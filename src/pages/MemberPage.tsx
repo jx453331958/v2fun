@@ -36,11 +36,11 @@ export default function MemberPage() {
     fetchData()
   }, [fetchData])
 
-  const { pullDistance, isRefreshing, pullStyle } = usePullToRefresh({
+  const { pullDistance, status, pullStyle } = usePullToRefresh({
     onRefresh: fetchData,
   })
 
-  if (loading && !isRefreshing) {
+  if (loading && status === 'idle') {
     return (
       <div className={styles.page}>
         <Header title={username || ''} showBack />
@@ -67,7 +67,7 @@ export default function MemberPage() {
     <div className={styles.page}>
       <Header title={member.username} showBack />
 
-      <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} />
+      <PullToRefreshIndicator pullDistance={pullDistance} status={status} />
 
       <div style={pullStyle}>
         <div className={styles.profile}>
