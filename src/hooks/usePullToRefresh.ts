@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback, type CSSProperties } from 're
 
 const THRESHOLD = 60
 const MAX_PULL = 120
-const DONE_DISPLAY_MS = 1200
+const DONE_DISPLAY_MS = 600
 
 export type PullStatus = 'idle' | 'pulling' | 'ready' | 'refreshing' | 'success' | 'error'
 
@@ -134,7 +134,7 @@ export function usePullToRefresh({ onRefresh }: UsePullToRefreshOptions): UsePul
 
   const pullStyle: CSSProperties = {
     transform: `translateY(${pullDistance}px)`,
-    transition: pulling ? 'none' : 'transform 0.3s cubic-bezier(0.2, 0, 0, 1)',
+    transition: pulling ? 'none' : 'transform 0.45s cubic-bezier(0.32, 0.72, 0, 1)',
     willChange: pulling ? 'transform' : undefined,
   }
 
