@@ -13,10 +13,40 @@ interface AuthState {
 
 const AuthContext = createContext<AuthState | null>(null)
 
+/** Persist token to server (encrypted) so it survives redeployment */
+function saveTokenToServer(token: string) {
+  fetch('/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token }),
+  }).catch(() => {})
+}
+
+function clearTokenFromServer() {
+  fetch('/auth/logout', { method: 'POST' }).catch(() => {})
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem('v2fun_token'))
   const [member, setMember] = useState<V2Member | null>(null)
-  const [loading, setLoading] = useState(!!localStorage.getItem('v2fun_token'))
+  const [loading, setLoading] = useState(true)
+
+  // Restore token from server if localStorage is empty (e.g. after redeployment / new browser)
+  useEffect(() => {
+    if (localStorage.getItem('v2fun_token')) return
+
+    fetch('/auth/session')
+      .then(res => res.json())
+      .then(data => {
+        if (data.token) {
+          localStorage.setItem('v2fun_token', data.token)
+          setToken(data.token)
+        } else {
+          setLoading(false)
+        }
+      })
+      .catch(() => setLoading(false))
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchMember = useCallback(async () => {
     try {
@@ -29,6 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem('v2fun_token')
       setToken(null)
       setMember(null)
+      clearTokenFromServer()
     } finally {
       setLoading(false)
     }
@@ -48,6 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const res = await v2.member()
       if (res.success) {
         setMember(res.result)
+        saveTokenToServer(newToken)
         return true
       }
       localStorage.removeItem('v2fun_token')
@@ -66,6 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('v2fun_token')
     setToken(null)
     setMember(null)
+    clearTokenFromServer()
   }
 
   return (

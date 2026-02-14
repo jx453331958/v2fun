@@ -3,7 +3,12 @@ services:
     image: ghcr.io/jx453331958/v2fun:latest
     ports:
       - "3210:3210"
+    volumes:
+      - v2fun-data:/app/data
     environment:
       - NODE_ENV=production
       - PORT=3210
     restart: unless-stopped
+
+volumes:
+  v2fun-data:

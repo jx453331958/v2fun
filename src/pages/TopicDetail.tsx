@@ -11,6 +11,7 @@ import Loading from '../components/Loading'
 import PullToRefreshIndicator from '../components/PullToRefreshIndicator'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { useInfiniteScroll } from '../hooks/useInfiniteScroll'
+import { sanitizeHtml } from '../utils/sanitize'
 import styles from './TopicDetail.module.css'
 
 const PAGE_SIZE = 100
@@ -220,7 +221,7 @@ export default function TopicDetail() {
           {topic.content_rendered && (
             <div
               className={`${styles.content} rendered-content`}
-              dangerouslySetInnerHTML={{ __html: topic.content_rendered }}
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(topic.content_rendered) }}
             />
           )}
 

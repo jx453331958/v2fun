@@ -20,6 +20,10 @@ RUN npm install --production
 
 WORKDIR /app
 
+RUN mkdir -p /app/data && chown -R node:node /app
+
+USER node
+
 EXPOSE 3210
 
 ENV NODE_ENV=production

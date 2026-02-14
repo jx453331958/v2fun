@@ -8,6 +8,7 @@ import Loading from '../components/Loading'
 import PullToRefreshIndicator from '../components/PullToRefreshIndicator'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { useInfiniteScroll } from '../hooks/useInfiniteScroll'
+import { sanitizeHtml } from '../utils/sanitize'
 import styles from './NodeDetail.module.css'
 
 export default function NodeDetail() {
@@ -93,7 +94,7 @@ export default function NodeDetail() {
             {node?.header?.replace(/<[^>]*>/g, '').trim() && (
               <div
                 className={styles.nodeHeader}
-                dangerouslySetInnerHTML={{ __html: node!.header }}
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(node!.header) }}
               />
             )}
             <div className={styles.topicCount}>

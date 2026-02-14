@@ -4,6 +4,7 @@ import { zhCN } from 'date-fns/locale'
 import { useState } from 'react'
 import { v2 } from '../api/client'
 import type { V2Reply } from '../types'
+import { sanitizeHtml } from '../utils/sanitize'
 import styles from './ReplyItem.module.css'
 
 interface Props {
@@ -63,7 +64,7 @@ export default function ReplyItem({ reply, floor, highlight }: Props) {
         </div>
         <div
           className={`${styles.content} rendered-content`}
-          dangerouslySetInnerHTML={{ __html: reply.content_rendered }}
+          dangerouslySetInnerHTML={{ __html: sanitizeHtml(reply.content_rendered) }}
         />
         <div className={styles.actions}>
           <button

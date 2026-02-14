@@ -56,11 +56,13 @@ find_free_port() {
 # 从已有安装目录加载配置
 load_conf() {
   local dir="${V2FUN_DIR:-$(pwd)}"
-  if [ -f "$dir/.v2fun.conf" ]; then
-    # shellcheck source=/dev/null
-    source "$dir/.v2fun.conf"
+  local conf="$dir/.v2fun.conf"
+  if [ -f "$conf" ]; then
+    # Parse config safely instead of sourcing — only accept V2FUN_PORT=<digits>
+    V2FUN_PORT=$(grep -oE '^V2FUN_PORT=[0-9]+$' "$conf" 2>/dev/null | cut -d= -f2)
+    V2FUN_PORT="${V2FUN_PORT:-3210}"
     INSTALL_DIR="$dir"
-    CONF_FILE="$dir/.v2fun.conf"
+    CONF_FILE="$conf"
     return 0
   fi
   return 1
@@ -68,13 +70,7 @@ load_conf() {
 
 # 读取已保存的端口（用于 status 显示等）
 get_port() {
-  if [ -n "$CONF_FILE" ] && [ -f "$CONF_FILE" ]; then
-    # shellcheck source=/dev/null
-    source "$CONF_FILE"
-    echo "${V2FUN_PORT:-3210}"
-  else
-    echo "3210"
-  fi
+  echo "${V2FUN_PORT:-3210}"
 }
 
 # ── 前置检查 ──────────────────────────────────────────────
@@ -110,10 +106,15 @@ services:
     image: ${IMAGE}
     ports:
       - "${port}:3210"
+    volumes:
+      - v2fun-data:/app/data
     environment:
       - NODE_ENV=production
       - PORT=3210
     restart: unless-stopped
+
+volumes:
+  v2fun-data:
 YAML
 }
 

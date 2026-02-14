@@ -11,6 +11,7 @@ import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { useInfiniteScroll } from '../hooks/useInfiniteScroll'
 import { parseNotification, parseNotificationLink } from '../utils/parseNotification'
 import { fixAvatarUrl } from '../utils/fixAvatarUrl'
+import { sanitizeHtml } from '../utils/sanitize'
 import styles from './Notifications.module.css'
 
 export default function Notifications() {
@@ -144,7 +145,7 @@ export default function Notifications() {
                 <div className={styles.itemBody}>
                   <div
                     className={styles.itemText}
-                    dangerouslySetInnerHTML={{ __html: notif.payload_rendered || notif.text }}
+                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(notif.payload_rendered || notif.text) }}
                   />
                   <span className={styles.itemTime}>
                     {formatDistanceToNow(new Date(notif.created * 1000), {

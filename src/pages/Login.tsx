@@ -83,7 +83,7 @@ export default function Login() {
             <li>复制生成的 Token 粘贴到上方</li>
           </ol>
           <p className={styles.helpNote}>
-            Token 仅存储在你的浏览器本地，不会上传到任何第三方服务器。
+            Token 存储在你的浏览器和服务端本地，重新部署不会丢失，不会上传到任何第三方服务器。
           </p>
         </div>
       </div>

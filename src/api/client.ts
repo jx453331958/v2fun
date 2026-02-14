@@ -17,8 +17,10 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   }
   const res = await fetch(`${BASE}${path}`, { ...options, headers })
   if (!res.ok) {
-    const text = await res.text().catch(() => '')
-    throw new Error(`API Error ${res.status}: ${text || res.statusText}`)
+    throw new Error(res.status === 401 ? '认证失败，请重新登录' :
+      res.status === 403 ? '无权限访问' :
+      res.status >= 500 ? '服务暂时不可用，请稍后重试' :
+      `请求失败 (${res.status})`)
   }
   return res.json()
 }
