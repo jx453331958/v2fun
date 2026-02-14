@@ -434,6 +434,7 @@ app.post('/web/reply', express.json({ limit: '16kb' }), async (req, res) => {
         'Origin': 'https://www.v2ex.com',
         'Referer': `https://www.v2ex.com/t/${topicId}`,
       },
+      body: formData.toString(),
       redirect: 'follow',
     })
 
