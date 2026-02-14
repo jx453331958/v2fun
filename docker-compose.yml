@@ -8,7 +8,6 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3210
-      - V2FUN_SECRET=${V2FUN_SECRET:-}
     restart: unless-stopped
 
 volumes:

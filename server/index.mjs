@@ -21,25 +21,16 @@ if (!fs.existsSync(DATA_DIR)) {
 
 // Generate or load a 32-byte app secret (AES-256 key)
 function loadAppSecret() {
-  // Priority 1: deterministic key from environment variable (survives any redeployment)
+  // Override: env var takes priority (for platforms without persistent volumes)
   if (process.env.V2FUN_SECRET) {
-    console.log('[secret] Using key derived from V2FUN_SECRET env var')
     return crypto.createHash('sha256').update(process.env.V2FUN_SECRET).digest()
   }
-  // Priority 2: persisted file in data volume
+  // Default: auto-managed file in data volume
   if (fs.existsSync(SECRET_FILE)) {
     const buf = fs.readFileSync(SECRET_FILE)
-    if (buf.length === 32) {
-      console.log('[secret] Loaded key from', SECRET_FILE)
-      return buf
-    }
+    if (buf.length === 32) return buf
   }
-  // Priority 3: generate new random key and prompt user to persist it
-  const generated = crypto.randomBytes(32).toString('hex')
-  console.log('[secret] ⚠️  No V2FUN_SECRET set. Generated a random key.')
-  console.log('[secret] To keep login across redeployments, create a .env file:')
-  console.log(`[secret]   echo "V2FUN_SECRET=${generated}" > .env`)
-  const secret = crypto.createHash('sha256').update(generated).digest()
+  const secret = crypto.randomBytes(32)
   fs.writeFileSync(SECRET_FILE, secret, { mode: 0o600 })
   return secret
 }
