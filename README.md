@@ -19,15 +19,27 @@
 ### 方式一：一键脚本（推荐）
 
 ```bash
-# 安装并启动（无参数默认 install）
+# 下载并运行（无参数进入交互式管理面板）
 bash <(curl -sL https://raw.githubusercontent.com/jx453331958/v2fun/main/v2fun.sh)
+```
 
-# 后续管理（脚本安装到 /opt/v2fun/）
-cd /opt/v2fun
+脚本会引导你完成安装：选择安装目录、设置端口、确认后自动构建部署。
+
+安装完成后，进入安装目录即可管理：
+
+```bash
+cd /opt/v2fun       # 默认安装目录
+bash v2fun.sh       # 打开管理面板
+```
+
+也支持直接传参：
+
+```bash
 bash v2fun.sh start      # 启动
 bash v2fun.sh stop       # 停止
 bash v2fun.sh restart    # 重启
-bash v2fun.sh update     # 更新到最新版
+bash v2fun.sh update     # 检查更新
+bash v2fun.sh config     # 修改配置（端口等）
 bash v2fun.sh logs       # 查看日志
 bash v2fun.sh status     # 查看状态
 bash v2fun.sh uninstall  # 卸载
@@ -42,15 +54,6 @@ docker compose up -d
 ```
 
 部署完成后访问 `http://你的服务器IP:3210`。
-
-### 自定义端口
-
-编辑 `docker-compose.yml`，修改端口映射：
-
-```yaml
-ports:
-  - "8080:3210"  # 改为你想要的端口
-```
 
 ## 登录说明
 
