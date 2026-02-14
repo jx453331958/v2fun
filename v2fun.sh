@@ -280,6 +280,10 @@ do_update() {
   info "拉取最新镜像 ..."
   $COMPOSE_CMD pull
 
+  # Regenerate compose file to pick up any new config (e.g. volumes)
+  info "更新配置文件 ..."
+  generate_compose "$port"
+
   info "重启服务 ..."
   $COMPOSE_CMD down
   $COMPOSE_CMD up -d
