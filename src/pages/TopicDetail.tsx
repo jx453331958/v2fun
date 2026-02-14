@@ -203,18 +203,20 @@ export default function TopicDetail() {
 
       <div style={pullStyle}>
         <article className={styles.topic}>
-          <div className={styles.topicMeta}>
-            <div className={styles.avatar}>
-              <img
-                src={topic.member.avatar_normal || topic.member.avatar}
-                alt={topic.member.username}
-              />
+          {topic.member && (
+            <div className={styles.topicMeta}>
+              <div className={styles.avatar}>
+                <img
+                  src={topic.member.avatar_normal || topic.member.avatar}
+                  alt={topic.member.username}
+                />
+              </div>
+              <div className={styles.metaInfo}>
+                <span className={styles.username}>{topic.member.username}</span>
+                <span className={styles.time}>{timeAgo}</span>
+              </div>
             </div>
-            <div className={styles.metaInfo}>
-              <span className={styles.username}>{topic.member.username}</span>
-              <span className={styles.time}>{timeAgo}</span>
-            </div>
-          </div>
+          )}
 
           <h1 className={styles.title}>{topic.title}</h1>
 

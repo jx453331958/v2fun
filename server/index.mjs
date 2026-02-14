@@ -110,7 +110,7 @@ app.use((_req, res, next) => {
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin')
   res.setHeader('Content-Security-Policy', [
     "default-src 'self'",
-    "script-src 'self'",
+    "script-src 'self' https://static.cloudflareinsights.com",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' https://cdn.v2ex.com https://*.v2ex.com data:",
     "font-src 'self'",

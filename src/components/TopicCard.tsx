@@ -22,29 +22,33 @@ export default function TopicCard({ topic }: Props) {
       onClick={() => navigate(`/topic/${topic.id}`)}
     >
       <div className={styles.meta}>
-        <div
-          className={styles.avatar}
-          onClick={(e) => {
-            e.stopPropagation()
-            navigate(`/member/${topic.member.username}`)
-          }}
-        >
-          <img
-            src={topic.member.avatar_normal || topic.member.avatar}
-            alt={topic.member.username}
-            loading="lazy"
-          />
-        </div>
-        <div className={styles.info}>
-          <span
-            className={styles.username}
+        {topic.member && (
+          <div
+            className={styles.avatar}
             onClick={(e) => {
               e.stopPropagation()
               navigate(`/member/${topic.member.username}`)
             }}
           >
-            {topic.member.username}
-          </span>
+            <img
+              src={topic.member.avatar_normal || topic.member.avatar}
+              alt={topic.member.username}
+              loading="lazy"
+            />
+          </div>
+        )}
+        <div className={styles.info}>
+          {topic.member && (
+            <span
+              className={styles.username}
+              onClick={(e) => {
+                e.stopPropagation()
+                navigate(`/member/${topic.member.username}`)
+              }}
+            >
+              {topic.member.username}
+            </span>
+          )}
           <div className={styles.details}>
             <span className={styles.time}>{timeAgo}</span>
             {topic.node && (
