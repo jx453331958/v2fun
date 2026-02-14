@@ -63,6 +63,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const res = await v2.member()
       if (res.success) {
         setMember(res.result)
+        // Re-establish server session so cookie endpoints work
+        // (session may be stale after server restart)
+        const t = localStorage.getItem('v2fun_token')
+        if (t) saveTokenToServer(t)
       }
     } catch {
       localStorage.removeItem('v2fun_token')
