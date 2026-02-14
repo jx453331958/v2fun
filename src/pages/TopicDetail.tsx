@@ -56,6 +56,7 @@ export default function TopicDetail() {
   const fetchData = useCallback(async () => {
     if (!id) return
     const topicId = parseInt(id)
+    reset()
     setLoading(true)
     try {
       const [t, repliesData] = await Promise.all([
@@ -68,7 +69,7 @@ export default function TopicDetail() {
     } finally {
       setLoading(false)
     }
-  }, [id])
+  }, [id, reset])
 
   useEffect(() => {
     fetchData()

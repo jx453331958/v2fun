@@ -42,6 +42,7 @@ export default function NodeDetail() {
 
   const fetchData = useCallback(async () => {
     if (!name) return
+    reset()
     setLoading(true)
     try {
       // Fetch node info and first page of topics in parallel
@@ -59,7 +60,7 @@ export default function NodeDetail() {
     } finally {
       setLoading(false)
     }
-  }, [name])
+  }, [name, reset])
 
   useEffect(() => {
     fetchData()
