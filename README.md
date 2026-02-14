@@ -58,10 +58,15 @@ services:
     image: ghcr.io/jx453331958/v2fun:latest
     ports:
       - "3210:3210"
+    volumes:
+      - v2fun-data:/app/data
     environment:
       - NODE_ENV=production
       - PORT=3210
     restart: unless-stopped
+
+volumes:
+  v2fun-data:
 EOF
 
 # 拉取镜像并启动
@@ -69,6 +74,8 @@ docker compose up -d
 ```
 
 部署完成后访问 `http://你的服务器IP:3210`。
+
+> `v2fun-data` 卷用于持久化登录 Token（加密存储），重新部署不会丢失登录状态。
 
 ## 登录说明
 
@@ -79,7 +86,7 @@ V2Fun 使用 V2EX 官方的 Personal Access Token（PAT）进行认证。
 3. 复制生成的 Token
 4. 在 V2Fun 的「我的」页面点击登录，粘贴 Token
 
-> Token 仅存储在你的浏览器 localStorage 中，API 请求通过你自己部署的代理服务器转发到 V2EX，不会经过任何第三方。
+> Token 存储在浏览器本地和服务端（AES-256-GCM 加密），重新部署不会丢失。API 请求通过你自己部署的代理服务器转发到 V2EX，不会经过任何第三方。
 
 ## 本地开发
 
@@ -127,11 +134,14 @@ v2fun/
 │   │   ├── Profile     # 个人中心
 │   │   ├── MemberPage  # 用户主页
 │   │   └── Login       # 登录
+│   ├── utils/          # 工具函数（HTML 消毒等）
 │   └── types.ts        # TypeScript 类型定义
+├── public/fonts/       # 自托管字体（JetBrains Mono）
 ├── server/
-│   └── index.mjs       # Express API 代理服务器
+│   └── index.mjs       # Express API 代理 + Token 加密存储
+├── data/               # 运行时数据（Docker volume 挂载，gitignore）
 ├── v2fun.sh            # 一键管理脚本
-├── Dockerfile          # 多阶段构建
+├── Dockerfile          # 多阶段构建（非 root 运行）
 └── docker-compose.yml
 ```
 
@@ -141,11 +151,33 @@ V2Fun 后端是一个轻量代理服务器，将前端请求转发到 V2EX 官�
 
 - `/api/topics/*`, `/api/nodes/*` 等 → V2EX API v1（公开接口）
 - `/api/v2/*` → V2EX API v2（需要 Token 认证）
+- `/auth/login`, `/auth/session`, `/auth/logout` → Token 加密持久化
 
 代理服务器的作用：
 1. 解决浏览器 CORS 跨域限制
 2. 在服务端转发 Authorization 头
-3. 生产环境同时提供静态文件服务
+3. 加密存储 Token，重新部署自动恢复登录
+4. 生产环境同时提供静态文件服务
+
+## 安全与隐私
+
+### 安全措施
+
+- **XSS 防护** — 所有服务端返回的 HTML 内容经 [DOMPurify](https://github.com/cure53/DOMPurify) 消毒后渲染
+- **Token 加密存储** — AES-256-GCM 加密，密钥首次启动随机生成，文件权限 `0600`
+- **会话认证** — HttpOnly + SameSite=Strict + Secure Cookie，HMAC-SHA256 签名校验（timing-safe）
+- **CSP** — 严格 Content-Security-Policy，脚本/字体/连接仅限同源
+- **安全头** — X-Frame-Options DENY、X-Content-Type-Options nosniff、Referrer-Policy
+- **速率限制** — 认证接口 15 分钟 30 次
+- **Docker** — 非 root 用户运行（`USER node`）
+
+### 隐私
+
+- **零追踪** — 无 Analytics、无 Telemetry、无第三方数据收集
+- **字体自托管** — JetBrains Mono 本地加载，不请求 Google Fonts CDN
+- **无第三方服务** — Token 和数据仅存储在你自己的服务器
+
+> 建议生产环境通过 Nginx/Caddy 等反向代理添加 HTTPS，以确保 Cookie 和 Token 传输加密。
 
 ## License
 
