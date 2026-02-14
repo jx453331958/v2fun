@@ -60,12 +60,14 @@ export function usePullToRefresh({ onRefresh }: UsePullToRefreshOptions): UsePul
     const onTouchMove = (e: TouchEvent) => {
       if (!pullingRef.current || isActive) return
       const dy = e.touches[0].clientY - startYRef.current
-      if (dy > 0 && window.scrollY <= 0) {
+      if (dy > 10 && window.scrollY <= 0) {
+        // Only preventDefault after a clear downward drag (>10px),
+        // so small touch movements during a tap still generate click events
         e.preventDefault()
         const distance = Math.min(dy * 0.5, MAX_PULL)
         setPullDistance(distance)
         setStatus(distance >= THRESHOLD ? 'ready' : 'pulling')
-      } else {
+      } else if (dy <= 0) {
         pullingRef.current = false
         setPullDistance(0)
         setStatus('idle')
