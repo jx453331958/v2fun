@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
 import { useAuth } from '../hooks/useAuth'
 import Header from '../components/Header'
 import styles from './Login.module.css'
@@ -35,12 +34,7 @@ export default function Login() {
     <div className={styles.page}>
       <Header title="登录" showBack />
 
-      <motion.div
-        className={styles.container}
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
-      >
+      <div className={styles.container}>
         <div className={styles.hero}>
           <div className={styles.logoMark}>V2</div>
           <h2 className={styles.title}>登录 V2EX</h2>
@@ -62,13 +56,9 @@ export default function Login() {
           </div>
 
           {error && (
-            <motion.p
-              className={styles.error}
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
+            <p className={styles.error}>
               {error}
-            </motion.p>
+            </p>
           )}
 
           <button
@@ -96,7 +86,7 @@ export default function Login() {
             Token 仅存储在你的浏览器本地，不会上传到任何第三方服务器。
           </p>
         </div>
-      </motion.div>
+      </div>
     </div>
   )
 }

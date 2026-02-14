@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { formatDistanceToNow } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
-import { motion } from 'framer-motion'
 import { v2 } from '../api/client'
 import { useAuth } from '../hooks/useAuth'
 import type { V2Notification } from '../types'
@@ -56,13 +55,10 @@ export default function Notifications() {
         <div className={styles.empty}>暂无通知</div>
       ) : (
         <div className={styles.list}>
-          {notifications.map((notif, i) => (
-            <motion.div
+          {notifications.map((notif) => (
+            <div
               key={notif.id}
               className={styles.item}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.25, delay: i * 0.03 }}
             >
               <div className={styles.itemAvatar}>
                 <img
@@ -83,7 +79,7 @@ export default function Notifications() {
                   })}
                 </span>
               </div>
-            </motion.div>
+            </div>
           ))}
         </div>
       )}

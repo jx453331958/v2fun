@@ -23,7 +23,7 @@
   -webkit-backdrop-filter: blur(24px) saturate(180%);
   border-top: 1px solid var(--border);
   display: flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: space-around;
   z-index: 100;
 }
@@ -32,12 +32,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 36px;
+  flex: 1;
   color: var(--text-tertiary);
   text-decoration: none;
   transition: color 0.2s;
-  border-radius: var(--radius-sm);
 }
 
 .tab.active {
@@ -48,8 +46,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  flex: 1;
+  padding: 0;
+}
+
+.createBtn svg {
   width: 36px;
   height: 36px;
+  padding: 9px;
   border-radius: 50%;
   background: var(--accent);
   color: var(--bg-primary);
@@ -57,7 +61,7 @@
   transition: transform 0.15s, box-shadow 0.15s;
 }
 
-.createBtn:active {
+.createBtn:active svg {
   transform: scale(0.9);
   box-shadow: 0 0 8px rgba(0, 212, 255, 0.3);
 }

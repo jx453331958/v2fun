@@ -78,12 +78,7 @@ export default function CreateTopic() {
         }
       />
 
-      <motion.div
-        className={styles.form}
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-      >
+      <div className={styles.form}>
         <div className={styles.nodeSelector} onClick={() => setShowNodePicker(true)}>
           <span className={styles.nodeLabel}>节点</span>
           {selectedNode ? (
@@ -120,7 +115,7 @@ export default function CreateTopic() {
           </svg>
           支持 Markdown 语法
         </div>
-      </motion.div>
+      </div>
 
       {showNodePicker && (
         <div className={styles.overlay} onClick={() => setShowNodePicker(false)}>

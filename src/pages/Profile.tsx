@@ -1,5 +1,4 @@
 import { useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
 import { formatDistanceToNow } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
 import { useAuth } from '../hooks/useAuth'
@@ -31,12 +30,7 @@ export default function Profile() {
 
   return (
     <div className={styles.page}>
-      <motion.div
-        className={styles.header}
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-      >
+      <div className={styles.header}>
         <div className={styles.headerBg} />
         <div className={styles.profileCard}>
           <div className={styles.avatar}>
@@ -46,14 +40,9 @@ export default function Profile() {
           {member.tagline && <p className={styles.tagline}>{member.tagline}</p>}
           <p className={styles.joinDate}>加入于 {joinedAgo}</p>
         </div>
-      </motion.div>
+      </div>
 
-      <motion.div
-        className={styles.content}
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.1 }}
-      >
+      <div className={styles.content}>
         {member.bio && (
           <div className={styles.section}>
             <h3 className={styles.sectionTitle}>个人简介</h3>
@@ -119,7 +108,7 @@ export default function Profile() {
             退出登录
           </button>
         </div>
-      </motion.div>
+      </div>
     </div>
   )
 }

@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
 import { v1 } from '../api/client'
 import type { V2Node } from '../types'
 import Loading from '../components/Loading'
@@ -49,21 +48,18 @@ export default function Nodes() {
         <Loading />
       ) : (
         <div className={styles.grid}>
-          {filtered.map((node, i) => (
-            <motion.button
+          {filtered.map((node) => (
+            <button
               key={node.id}
               className={styles.nodeCard}
               onClick={() => navigate(`/node/${node.name}`)}
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.25, delay: i * 0.02 }}
             >
               <div className={styles.nodeTitle}>{node.title}</div>
               <div className={styles.nodeMeta}>
                 <span className={styles.nodeName}>{node.name}</span>
                 <span className={styles.nodeTopics}>{node.topics}</span>
               </div>
-            </motion.button>
+            </button>
           ))}
           {filtered.length === 0 && (
             <div className={styles.empty}>没有找到匹配的节点</div>

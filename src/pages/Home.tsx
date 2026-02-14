@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
 import { v1 } from '../api/client'
 import type { V2Topic } from '../types'
 import TopicCard from '../components/TopicCard'
@@ -55,42 +54,22 @@ export default function Home() {
         </div>
       </header>
 
-      <AnimatePresence mode="wait">
-        {loading ? (
-          <motion.div
-            key="loading"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <TopicSkeleton />
-          </motion.div>
-        ) : error ? (
-          <motion.div
-            key="error"
-            className={styles.error}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-          >
-            <p>{error}</p>
-            <button className={styles.retryBtn} onClick={() => fetchTopics(tab)}>
-              重试
-            </button>
-          </motion.div>
-        ) : (
-          <motion.div
-            key={tab}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            {topics.map((topic, i) => (
-              <TopicCard key={topic.id} topic={topic} index={i} />
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {loading ? (
+        <TopicSkeleton />
+      ) : error ? (
+        <div className={styles.error}>
+          <p>{error}</p>
+          <button className={styles.retryBtn} onClick={() => fetchTopics(tab)}>
+            重试
+          </button>
+        </div>
+      ) : (
+        <div>
+          {topics.map((topic) => (
+            <TopicCard key={topic.id} topic={topic} />
+          ))}
+        </div>
+      )}
     </div>
   )
 }

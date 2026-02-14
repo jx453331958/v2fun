@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { formatDistanceToNow } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
-import { motion } from 'framer-motion'
 import { v1 } from '../api/client'
 import type { V2Member, V2Topic } from '../types'
 import Header from '../components/Header'
@@ -57,12 +56,7 @@ export default function MemberPage() {
     <div className={styles.page}>
       <Header title={member.username} showBack />
 
-      <motion.div
-        className={styles.profile}
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-      >
+      <div className={styles.profile}>
         <div className={styles.avatar}>
           <img src={member.avatar_large || member.avatar} alt={member.username} />
         </div>
@@ -71,7 +65,7 @@ export default function MemberPage() {
           {member.tagline && <p className={styles.tagline}>{member.tagline}</p>}
           <p className={styles.joinDate}>加入于 {joinedAgo}</p>
         </div>
-      </motion.div>
+      </div>
 
       {member.bio && (
         <div className={styles.bio}>{member.bio}</div>
@@ -81,8 +75,8 @@ export default function MemberPage() {
         最近主题 ({topics.length})
       </div>
 
-      {topics.map((topic, i) => (
-        <TopicCard key={topic.id} topic={topic} index={i} />
+      {topics.map((topic) => (
+        <TopicCard key={topic.id} topic={topic} />
       ))}
 
       {topics.length === 0 && (

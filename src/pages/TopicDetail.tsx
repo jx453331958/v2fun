@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import { formatDistanceToNow } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
-import { motion } from 'framer-motion'
 import { v1, v2 } from '../api/client'
 import { useAuth } from '../hooks/useAuth'
 import type { V2Topic, V2Reply } from '../types'
@@ -120,11 +119,7 @@ export default function TopicDetail() {
     <div className={styles.page}>
       <Header title={topic.node?.title || '主题详情'} showBack />
 
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-      >
+      <div>
         <article className={styles.topic}>
           <div className={styles.topicMeta}>
             <div className={styles.avatar}>
@@ -173,7 +168,7 @@ export default function TopicDetail() {
             ))
           )}
         </div>
-      </motion.div>
+      </div>
 
       {isLoggedIn && (
         <div className={styles.replyBar} ref={replyBarRef}>

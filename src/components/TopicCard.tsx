@@ -1,7 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { formatDistanceToNow } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
-import { motion } from 'framer-motion'
 import type { V2Topic } from '../types'
 import styles from './TopicCard.module.css'
 
@@ -10,7 +9,7 @@ interface Props {
   index?: number
 }
 
-export default function TopicCard({ topic, index = 0 }: Props) {
+export default function TopicCard({ topic }: Props) {
   const navigate = useNavigate()
   const timeAgo = formatDistanceToNow(new Date(topic.created * 1000), {
     locale: zhCN,
@@ -18,11 +17,8 @@ export default function TopicCard({ topic, index = 0 }: Props) {
   })
 
   return (
-    <motion.article
+    <article
       className={styles.card}
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, delay: index * 0.04, ease: [0.25, 0.46, 0.45, 0.94] }}
       onClick={() => navigate(`/topic/${topic.id}`)}
     >
       <div className={styles.meta}>
@@ -74,6 +70,6 @@ export default function TopicCard({ topic, index = 0 }: Props) {
         )}
       </div>
       <h3 className={styles.title}>{topic.title}</h3>
-    </motion.article>
+    </article>
   )
 }
