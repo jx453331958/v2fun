@@ -127,8 +127,8 @@ export default function TopicDetail() {
       if (textareaRef.current) {
         textareaRef.current.style.height = 'auto'
       }
-    } catch {
-      alert('回复失败，请稍后重试')
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '回复失败，请稍后重试')
     } finally {
       setSubmitting(false)
     }

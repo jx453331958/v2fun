@@ -1,4 +1,5 @@
-import { Routes, Route } from 'react-router-dom'
+import { useEffect } from 'react'
+import { Routes, Route, useLocation } from 'react-router-dom'
 import Layout from './components/Layout'
 import Home from './pages/Home'
 import TopicDetail from './pages/TopicDetail'
@@ -10,8 +11,18 @@ import NodeDetail from './pages/NodeDetail'
 import Notifications from './pages/Notifications'
 import MemberPage from './pages/MemberPage'
 
+function ScrollToTop() {
+  const { pathname } = useLocation()
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [pathname])
+  return null
+}
+
 export default function App() {
   return (
+    <>
+    <ScrollToTop />
     <Routes>
       <Route element={<Layout />}>
         <Route path="/" element={<Home />} />
@@ -25,5 +36,6 @@ export default function App() {
         <Route path="/member/:username" element={<MemberPage />} />
       </Route>
     </Routes>
+    </>
   )
 }

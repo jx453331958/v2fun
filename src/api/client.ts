@@ -22,7 +22,12 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
       res.status >= 500 ? '服务暂时不可用，请稍后重试' :
       `请求失败 (${res.status})`)
   }
-  return res.json()
+  const data = await res.json()
+  // V2 API may return 200 with { success: false, message: "..." }
+  if (data && data.success === false && data.message) {
+    throw new Error(data.message)
+  }
+  return data
 }
 
 // V1 API - public endpoints
