@@ -7,8 +7,10 @@ interface Props {
 }
 
 const THRESHOLD = 60
-const SEGMENTS = 8
-const SPIN_DURATION = 0.8
+const SIZE = 26
+const STROKE = 2.5
+const R = (SIZE - STROKE) / 2
+const C = 2 * Math.PI * R
 
 export default function PullToRefreshIndicator({ pullDistance, status }: Props) {
   if (status === 'idle') return null
@@ -25,32 +27,44 @@ export default function PullToRefreshIndicator({ pullDistance, status }: Props) 
         transition:
           status === 'pulling' || status === 'ready'
             ? 'none'
-            : 'height 0.45s cubic-bezier(0.32, 0.72, 0, 1)',
+            : 'height 0.4s cubic-bezier(0.33, 1, 0.68, 1)',
       }}
     >
       <div
-        className={styles.spinnerWrap}
+        className={`${styles.spinner} ${isSpinning ? styles.spinning : ''}`}
         style={{
-          opacity: isDone ? 0 : progress,
+          opacity: isDone ? 0 : Math.min(progress * 1.5, 1),
           transform: isSpinning
             ? undefined
-            : `scale(${0.5 + progress * 0.5}) rotate(${pullDistance * 3}deg)`,
+            : `scale(${0.5 + progress * 0.5}) rotate(${pullDistance * 2}deg)`,
           transition: isDone ? 'opacity 0.3s ease-out' : undefined,
         }}
       >
-        {Array.from({ length: SEGMENTS }, (_, i) => (
-          <div
-            key={i}
-            className={`${styles.petal} ${isSpinning ? styles.petalSpin : ''}`}
-            style={{
-              transform: `rotate(${i * (360 / SEGMENTS)}deg)`,
-              opacity: isSpinning ? undefined : 1 - (i / SEGMENTS) * 0.75,
-              animationDelay: isSpinning
-                ? `${(-i * SPIN_DURATION) / SEGMENTS}s`
-                : undefined,
-            }}
+        <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
+          {/* Background ring */}
+          <circle
+            cx={SIZE / 2}
+            cy={SIZE / 2}
+            r={R}
+            fill="none"
+            stroke="var(--border)"
+            strokeWidth={STROKE}
           />
-        ))}
+          {/* Foreground arc with glow */}
+          <circle
+            cx={SIZE / 2}
+            cy={SIZE / 2}
+            r={R}
+            fill="none"
+            stroke="var(--accent)"
+            strokeWidth={STROKE}
+            strokeLinecap="round"
+            strokeDasharray={C}
+            strokeDashoffset={isSpinning ? C * 0.7 : C * (1 - progress)}
+            transform={`rotate(-90 ${SIZE / 2} ${SIZE / 2})`}
+            className={styles.arc}
+          />
+        </svg>
       </div>
     </div>
   )

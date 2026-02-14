@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback, type CSSProperties } from 'react'
 
 const THRESHOLD = 60
-const MAX_PULL = 120
+const MAX_PULL = 130
 const DONE_DISPLAY_MS = 600
 
 export type PullStatus = 'idle' | 'pulling' | 'ready' | 'refreshing' | 'success' | 'error'
@@ -16,10 +16,10 @@ interface UsePullToRefreshReturn {
   pullStyle: CSSProperties
 }
 
-// Rubber-band damping: progressive resistance as you pull further
+// iOS-style reciprocal damping: starts ~1:1, smooth progressive resistance
+// Unlike exponential decay (sharp falloff), this curve decelerates evenly
 function dampen(dy: number): number {
-  // Exponential decay gives a natural "elastic" feel
-  return MAX_PULL * (1 - Math.exp(-dy / (MAX_PULL * 1.2)))
+  return MAX_PULL * dy / (dy + MAX_PULL)
 }
 
 export function usePullToRefresh({ onRefresh }: UsePullToRefreshOptions): UsePullToRefreshReturn {
@@ -28,7 +28,7 @@ export function usePullToRefresh({ onRefresh }: UsePullToRefreshOptions): UsePul
   const startYRef = useRef(0)
   const startXRef = useRef(0)
   const pullingRef = useRef(false)
-  const lockedRef = useRef(false) // true = confirmed vertical pull; false = undecided or horizontal
+  const lockedRef = useRef(false)
   const doneTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   const handleRefresh = useCallback(async () => {
@@ -40,14 +40,12 @@ export function usePullToRefresh({ onRefresh }: UsePullToRefreshOptions): UsePul
     } catch {
       setStatus('error')
     }
-    // Hold the done state briefly, then reset
     doneTimerRef.current = setTimeout(() => {
       setStatus('idle')
       setPullDistance(0)
     }, DONE_DISPLAY_MS)
   }, [onRefresh])
 
-  // Cleanup timer on unmount
   useEffect(() => {
     return () => {
       if (doneTimerRef.current) clearTimeout(doneTimerRef.current)
@@ -72,23 +70,18 @@ export function usePullToRefresh({ onRefresh }: UsePullToRefreshOptions): UsePul
       const dy = e.touches[0].clientY - startYRef.current
       const dx = e.touches[0].clientX - startXRef.current
 
-      // Determine direction lock on first significant movement
       if (!lockedRef.current) {
         const absDy = Math.abs(dy)
         const absDx = Math.abs(dx)
-        // Need at least 10px to decide direction
         if (absDy < 10 && absDx < 10) return
         if (absDx > absDy) {
-          // Horizontal swipe — abort pull-to-refresh entirely
           pullingRef.current = false
           return
         }
         if (dy <= 0) {
-          // Scrolling up — not a pull
           pullingRef.current = false
           return
         }
-        // Confirmed downward vertical pull
         lockedRef.current = true
       }
 
@@ -134,7 +127,7 @@ export function usePullToRefresh({ onRefresh }: UsePullToRefreshOptions): UsePul
 
   const pullStyle: CSSProperties = {
     transform: `translateY(${pullDistance}px)`,
-    transition: pulling ? 'none' : 'transform 0.45s cubic-bezier(0.32, 0.72, 0, 1)',
+    transition: pulling ? 'none' : 'transform 0.4s cubic-bezier(0.33, 1, 0.68, 1)',
     willChange: pulling ? 'transform' : undefined,
   }
 
