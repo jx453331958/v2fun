@@ -130,7 +130,7 @@ export default function Notifications() {
     }
 
     // Navigate to the topic referenced in this notification
-    const parsed = parseNotification(notif.payload_rendered || notif.text || '')
+    const parsed = parseNotification(notif.text || '')
     if (parsed) {
       navigateToTopic(parsed.topicId, parsed.replyFloor)
     }
@@ -203,7 +203,7 @@ export default function Notifications() {
                   <div className={styles.itemHeader}>
                     <span
                       className={styles.itemText}
-                      dangerouslySetInnerHTML={{ __html: sanitizeHtml(notif.payload_rendered || notif.text) }}
+                      dangerouslySetInnerHTML={{ __html: sanitizeHtml(notif.text) }}
                     />
                     <span className={styles.itemTime}>
                       {formatDistanceToNow(new Date(notif.created * 1000), {
@@ -212,8 +212,11 @@ export default function Notifications() {
                       })}
                     </span>
                   </div>
-                  {notif.payload && (
-                    <div className={styles.itemPayload}>{notif.payload}</div>
+                  {notif.payload_rendered && (
+                    <div
+                      className={styles.itemPayload}
+                      dangerouslySetInnerHTML={{ __html: sanitizeHtml(notif.payload_rendered) }}
+                    />
                   )}
                 </div>
               </div>
