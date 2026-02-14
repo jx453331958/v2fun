@@ -6,21 +6,21 @@
 
 .topic {
   background: var(--bg-secondary);
-  padding: 20px 16px;
-  border-bottom: 0.5px solid var(--border-light);
+  padding: 18px 16px;
+  border-bottom: 1px solid var(--border);
 }
 
 .topicMeta {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 14px;
+  margin-bottom: 12px;
 }
 
 .avatar {
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
   background: var(--bg-tertiary);
 }
@@ -38,23 +38,23 @@
 }
 
 .username {
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   font-weight: 600;
   color: var(--text-primary);
 }
 
 .time {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   color: var(--text-tertiary);
+  font-family: var(--font-mono);
 }
 
 .title {
-  font-family: var(--font-display);
-  font-size: 1.25rem;
+  font-size: 1.15rem;
   font-weight: 600;
   line-height: 1.4;
   color: var(--text-primary);
-  margin-bottom: 14px;
+  margin-bottom: 12px;
 }
 
 .content {
@@ -65,47 +65,48 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 16px;
-  padding-top: 14px;
-  border-top: 0.5px solid var(--border-light);
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
 }
 
 .actionBtn {
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 0.825rem;
+  font-size: 0.8rem;
   color: var(--text-tertiary);
-  padding: 6px 12px;
-  border-radius: var(--radius-lg);
-  transition: all 0.2s;
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  transition: all 0.15s;
 }
 
 .actionBtn:active {
-  background: var(--accent-light);
-  color: var(--accent);
+  background: var(--accent-warm-light);
+  color: var(--accent-warm);
 }
 
 .thanked {
-  color: var(--danger) !important;
+  color: var(--accent-warm) !important;
 }
 
 .replyCount {
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   color: var(--text-secondary);
   font-weight: 500;
+  font-family: var(--font-mono);
 }
 
 .repliesSection {
   background: var(--bg-secondary);
-  margin-top: 8px;
+  margin-top: 6px;
 }
 
 .noReplies {
   padding: 48px 20px;
   text-align: center;
   color: var(--text-tertiary);
-  font-size: 0.9rem;
+  font-size: 0.88rem;
 }
 
 .replyBar {
@@ -115,21 +116,22 @@
   transform: translateX(-50%);
   width: 100%;
   max-width: var(--max-app-width);
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border-top: 0.5px solid var(--border-light);
-  padding: 10px 16px calc(10px + var(--safe-bottom));
+  background: rgba(11, 11, 16, 0.92);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border-top: 1px solid var(--border);
+  padding: 8px 16px calc(8px + var(--safe-bottom));
   z-index: 100;
 }
 
 .replyInput {
   display: flex;
   align-items: flex-end;
-  gap: 10px;
+  gap: 8px;
   background: var(--bg-tertiary);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   padding: 8px 8px 8px 14px;
+  border: 1px solid var(--border);
 }
 
 .replyInput textarea {
@@ -137,11 +139,11 @@
   border: none;
   background: none;
   resize: none;
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   line-height: 1.5;
   color: var(--text-primary);
   outline: none;
-  min-height: 24px;
+  min-height: 22px;
   max-height: 120px;
 }
 
@@ -150,31 +152,31 @@
 }
 
 .sendBtn {
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background: var(--accent);
-  color: white;
+  color: var(--bg-primary);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: opacity 0.2s, transform 0.2s;
+  transition: opacity 0.15s, transform 0.15s;
 }
 
 .sendBtn:disabled {
-  opacity: 0.4;
+  opacity: 0.3;
 }
 
 .sendBtn:not(:disabled):active {
-  transform: scale(0.92);
+  transform: scale(0.9);
 }
 
 .sendSpinner {
-  width: 16px;
-  height: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top-color: white;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(11, 11, 16, 0.3);
+  border-top-color: var(--bg-primary);
   border-radius: 50%;
   animation: spin 0.6s linear infinite;
 }
@@ -189,5 +191,5 @@
   justify-content: center;
   padding: 64px 20px;
   color: var(--text-tertiary);
-  font-size: 0.9rem;
+  font-size: 0.88rem;
 }

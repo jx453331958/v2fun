@@ -6,7 +6,7 @@
 
 .main {
   flex: 1;
-  padding-bottom: calc(var(--tab-height) + var(--safe-bottom) + 8px);
+  padding-bottom: calc(var(--tab-height) + var(--safe-bottom));
 }
 
 .tabBar {
@@ -18,10 +18,10 @@
   max-width: var(--max-app-width);
   height: calc(var(--tab-height) + var(--safe-bottom));
   padding-bottom: var(--safe-bottom);
-  background: rgba(255, 255, 255, 0.88);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border-top: 0.5px solid var(--border-light);
+  background: rgba(11, 11, 16, 0.85);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border-top: 1px solid var(--border);
   display: flex;
   align-items: center;
   justify-content: space-around;
@@ -30,52 +30,34 @@
 
 .tab {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 2px;
-  padding: 4px 12px;
+  justify-content: center;
+  width: 44px;
+  height: 36px;
   color: var(--text-tertiary);
   text-decoration: none;
-  font-size: 0.625rem;
-  letter-spacing: 0.02em;
   transition: color 0.2s;
-  position: relative;
-}
-
-.tab svg {
-  transition: transform 0.2s;
+  border-radius: var(--radius-sm);
 }
 
 .tab.active {
   color: var(--accent);
 }
 
-.tab.active svg {
-  transform: scale(1.05);
-}
-
 .createBtn {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0;
-  margin-top: -12px;
-}
-
-.createIcon {
-  width: 42px;
-  height: 42px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--accent), var(--accent-hover));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  box-shadow: 0 4px 16px rgba(184, 92, 56, 0.3);
-  transition: transform 0.2s, box-shadow 0.2s;
+  background: var(--accent);
+  color: var(--bg-primary);
+  box-shadow: 0 0 16px rgba(0, 212, 255, 0.3);
+  transition: transform 0.15s, box-shadow 0.15s;
 }
 
-.createBtn:active .createIcon {
-  transform: scale(0.92);
-  box-shadow: 0 2px 8px rgba(184, 92, 56, 0.3);
+.createBtn:active {
+  transform: scale(0.9);
+  box-shadow: 0 0 8px rgba(0, 212, 255, 0.3);
 }

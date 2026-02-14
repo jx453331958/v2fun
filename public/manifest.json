@@ -4,8 +4,8 @@
   "description": "V2EX 移动客户端",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#F8F5F0",
-  "theme_color": "#F8F5F0",
+  "background_color": "#0B0B10",
+  "theme_color": "#0B0B10",
   "orientation": "portrait-primary",
   "icons": [
     {

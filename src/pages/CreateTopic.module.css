@@ -4,17 +4,17 @@
 }
 
 .publishBtn {
-  font-size: 0.875rem;
+  font-size: 0.82rem;
   font-weight: 600;
-  color: white;
+  color: var(--bg-primary);
   background: var(--accent);
-  padding: 6px 16px;
-  border-radius: var(--radius-lg);
-  transition: opacity 0.2s;
+  padding: 5px 14px;
+  border-radius: var(--radius-sm);
+  transition: opacity 0.15s;
 }
 
 .publishBtn:disabled {
-  opacity: 0.4;
+  opacity: 0.3;
 }
 
 .form {
@@ -25,9 +25,9 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 14px 16px;
+  padding: 12px 16px;
   background: var(--bg-secondary);
-  border-bottom: 0.5px solid var(--border-light);
+  border-bottom: 1px solid var(--border);
   cursor: pointer;
 }
 
@@ -36,21 +36,22 @@
 }
 
 .nodeLabel {
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   color: var(--text-tertiary);
   min-width: 32px;
+  font-family: var(--font-mono);
 }
 
 .nodeSelected {
   flex: 1;
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   font-weight: 500;
   color: var(--accent);
 }
 
 .nodePlaceholder {
   flex: 1;
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   color: var(--text-tertiary);
 }
 
@@ -60,14 +61,14 @@
 
 .titleInput {
   width: 100%;
-  padding: 16px;
+  padding: 14px 16px;
   border: none;
   background: var(--bg-secondary);
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   font-weight: 600;
   color: var(--text-primary);
   outline: none;
-  border-bottom: 0.5px solid var(--border-light);
+  border-bottom: 1px solid var(--border);
 }
 
 .titleInput::placeholder {
@@ -77,10 +78,10 @@
 
 .contentInput {
   width: 100%;
-  padding: 16px;
+  padding: 14px 16px;
   border: none;
   background: var(--bg-secondary);
-  font-size: 0.938rem;
+  font-size: 0.9rem;
   line-height: 1.7;
   color: var(--text-primary);
   outline: none;
@@ -96,18 +97,19 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 10px 16px;
-  font-size: 0.78rem;
+  padding: 8px 16px;
+  font-size: 0.72rem;
   color: var(--text-tertiary);
   background: var(--bg-secondary);
-  border-top: 0.5px solid var(--border-light);
+  border-top: 1px solid var(--border);
+  font-family: var(--font-mono);
 }
 
 /* Node picker */
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.6);
   z-index: 200;
   display: flex;
   align-items: flex-end;
@@ -120,18 +122,20 @@
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   display: flex;
   flex-direction: column;
+  border-top: 1px solid var(--border-accent);
 }
 
 .pickerHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 16px 8px;
+  padding: 14px 16px 8px;
 }
 
 .pickerHeader h3 {
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 600;
+  color: var(--text-primary);
 }
 
 .pickerHeader button {
@@ -140,21 +144,21 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
+  border-radius: var(--radius-sm);
   color: var(--text-secondary);
 }
 
 .searchWrap {
-  padding: 0 16px 12px;
+  padding: 0 16px 10px;
 }
 
 .searchInput {
   width: 100%;
-  padding: 10px 14px;
+  padding: 9px 14px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   background: var(--bg-tertiary);
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   color: var(--text-primary);
   outline: none;
 }
@@ -174,9 +178,9 @@
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: 12px 16px;
+  padding: 11px 16px;
   text-align: left;
-  border-bottom: 0.5px solid var(--border-light);
+  border-bottom: 1px solid var(--border);
   transition: background 0.15s;
 }
 
@@ -189,12 +193,13 @@
 }
 
 .nodeTitle {
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   font-weight: 500;
   color: var(--text-primary);
 }
 
 .nodeMeta {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   color: var(--text-tertiary);
+  font-family: var(--font-mono);
 }

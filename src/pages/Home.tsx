@@ -34,38 +34,26 @@ export default function Home() {
   return (
     <div className={styles.page}>
       <header className={styles.header}>
-        <div className={styles.brand}>
-          <h1 className={styles.logo}>V2Fun</h1>
-          <span className={styles.tagline}>创意工作者的社区</span>
+        <span className={styles.logo}>V2Fun</span>
+        <div className={styles.tabs}>
+          <button
+            className={`${styles.tab} ${tab === 'hot' ? styles.active : ''}`}
+            onClick={() => setTab('hot')}
+          >
+            热门
+          </button>
+          <button
+            className={`${styles.tab} ${tab === 'latest' ? styles.active : ''}`}
+            onClick={() => setTab('latest')}
+          >
+            最新
+          </button>
+          <div
+            className={styles.tabSlider}
+            style={{ transform: `translateX(${tab === 'hot' ? 0 : '100%'})` }}
+          />
         </div>
       </header>
-
-      <div className={styles.tabs}>
-        <button
-          className={`${styles.tab} ${tab === 'hot' ? styles.active : ''}`}
-          onClick={() => setTab('hot')}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 2c.5 4-2 7-2 7s3 3 3 7-3 7-3 7" />
-            <path d="M8 14c0-3 2-5 2-5s-2 3-2 5 1 4 1 4" />
-          </svg>
-          热门
-        </button>
-        <button
-          className={`${styles.tab} ${tab === 'latest' ? styles.active : ''}`}
-          onClick={() => setTab('latest')}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="10" />
-            <polyline points="12 6 12 12 16 14" />
-          </svg>
-          最新
-        </button>
-        <div
-          className={styles.tabIndicator}
-          style={{ transform: `translateX(${tab === 'hot' ? 0 : 100}%)` }}
-        />
-      </div>
 
       <AnimatePresence mode="wait">
         {loading ? (

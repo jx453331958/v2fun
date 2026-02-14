@@ -13,8 +13,8 @@
   top: 0;
   left: 0;
   right: 0;
-  height: calc(120px + var(--safe-top));
-  background: linear-gradient(135deg, var(--accent), #D4884A);
+  height: calc(100px + var(--safe-top));
+  background: linear-gradient(135deg, rgba(0, 212, 255, 0.15), rgba(0, 212, 255, 0.05));
 }
 
 .profileCard {
@@ -22,17 +22,17 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 80px 20px 24px;
-  padding-top: calc(80px + var(--safe-top));
+  padding: 64px 20px 24px;
+  padding-top: calc(64px + var(--safe-top));
 }
 
 .avatar {
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
+  width: 72px;
+  height: 72px;
+  border-radius: var(--radius-lg);
   overflow: hidden;
-  border: 4px solid var(--bg-secondary);
-  box-shadow: var(--shadow-lg);
+  border: 3px solid var(--bg-primary);
+  box-shadow: var(--glow-accent);
   background: var(--bg-tertiary);
 }
 
@@ -43,24 +43,24 @@
 }
 
 .username {
-  font-family: var(--font-display);
-  font-size: 1.3rem;
+  font-size: 1.2rem;
   font-weight: 600;
   color: var(--text-primary);
   margin-top: 12px;
 }
 
 .tagline {
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   color: var(--text-secondary);
   margin-top: 4px;
   text-align: center;
 }
 
 .joinDate {
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   color: var(--text-tertiary);
   margin-top: 4px;
+  font-family: var(--font-mono);
 }
 
 .content {
@@ -70,22 +70,23 @@
 .section {
   background: var(--bg-secondary);
   border-radius: var(--radius-md);
-  padding: 16px;
-  margin-bottom: 12px;
-  border: 0.5px solid var(--border-light);
+  padding: 14px;
+  margin-bottom: 10px;
+  border: 1px solid var(--border);
 }
 
 .sectionTitle {
-  font-size: 0.8rem;
+  font-size: 0.72rem;
   font-weight: 600;
   color: var(--text-tertiary);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 12px;
+  letter-spacing: 0.06em;
+  margin-bottom: 10px;
+  font-family: var(--font-mono);
 }
 
 .bio {
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   color: var(--text-secondary);
   line-height: 1.6;
 }
@@ -93,17 +94,17 @@
 .links {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .link {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   color: var(--text-secondary);
   text-decoration: none;
-  padding: 6px 0;
+  padding: 4px 0;
 }
 
 .link svg {
@@ -118,7 +119,7 @@
 }
 
 .noLinks {
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   color: var(--text-tertiary);
 }
 
@@ -128,7 +129,7 @@
   gap: 10px;
   width: 100%;
   padding: 4px 0;
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   color: var(--text-primary);
 }
 
@@ -148,7 +149,7 @@
 .logoutBtn {
   width: 100%;
   padding: 4px;
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   color: var(--danger);
   font-weight: 500;
   text-align: center;
