@@ -710,8 +710,54 @@ app.get('/web/replies/:topicId', async (req, res) => {
 
   const fwd = getForwardHeaders(req)
   try {
-    const { replies, totalPages } = await scrapeReplies(topicId, page, cookie, fwd)
-    res.json({ success: true, result: replies, totalPages })
+    // V1 API returns correct Unix timestamps; web scraping provides thanked/thanks/totalPages
+    const [v1Replies, scraped] = await Promise.all([
+      fetch(`https://www.v2ex.com/api/replies/show.json?topic_id=${topicId}&page=${page}&page_size=100`, {
+        headers: { 'User-Agent': fwd.userAgent },
+      }).then(r => r.ok ? r.json() : []).catch(() => []),
+      scrapeReplies(topicId, page, cookie, fwd),
+    ])
+
+    const { totalPages } = scraped
+
+    if (v1Replies.length > 0) {
+      // Merge: V1 API data (correct timestamps) + scraped thanked/thanks
+      const scrapedMap = new Map(scraped.replies.map(r => [r.id, r]))
+      const replies = v1Replies.map(r => {
+        const s = scrapedMap.get(r.id)
+        return {
+          id: r.id,
+          content: r.content || '',
+          content_rendered: r.content_rendered || '',
+          member: {
+            id: r.member?.id || 0,
+            username: r.member?.username || '',
+            url: r.member?.url || '',
+            website: r.member?.website || '',
+            twitter: r.member?.twitter || '',
+            psn: r.member?.psn || '',
+            github: r.member?.github || '',
+            btc: r.member?.btc || '',
+            location: r.member?.location || '',
+            tagline: r.member?.tagline || '',
+            bio: r.member?.bio || '',
+            avatar_mini: r.member?.avatar_mini || '',
+            avatar_normal: r.member?.avatar_normal || '',
+            avatar_large: r.member?.avatar_large || '',
+            avatar: r.member?.avatar || r.member?.avatar_normal || '',
+            created: r.member?.created || 0,
+          },
+          created: r.created,
+          topic_id: r.topic_id || topicId,
+          thanked: s?.thanked ?? false,
+          thanks: s?.thanks ?? 0,
+        }
+      })
+      res.json({ success: true, result: replies, totalPages })
+    } else {
+      // V1 API unavailable — fall back to scraped data
+      res.json({ success: true, result: scraped.replies, totalPages })
+    }
   } catch (err) {
     console.error('[web/replies]', err)
     res.json({ success: true, result: [], totalPages: 1 })
