@@ -9,8 +9,11 @@ import styles from './Home.module.css'
 
 type Tab = 'hot' | 'latest'
 
+// Persist tab selection across remounts (e.g. navigating to topic and back)
+let savedTab: Tab = 'latest'
+
 export default function Home() {
-  const [tab, setTab] = useState<Tab>('latest')
+  const [tab, setTab] = useState<Tab>(savedTab)
   const [topics, setTopics] = useState<V2Topic[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -45,13 +48,13 @@ export default function Home() {
         <div className={styles.tabs}>
           <button
             className={`${styles.tab} ${tab === 'hot' ? styles.active : ''}`}
-            onClick={() => setTab('hot')}
+            onClick={() => { savedTab = 'hot'; setTab('hot') }}
           >
             热门
           </button>
           <button
             className={`${styles.tab} ${tab === 'latest' ? styles.active : ''}`}
-            onClick={() => setTab('latest')}
+            onClick={() => { savedTab = 'latest'; setTab('latest') }}
           >
             最新
           </button>

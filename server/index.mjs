@@ -483,12 +483,14 @@ async function scrapeReplies(topicId, page, cookie, fwd) {
     const contentMatch = content.match(/<div class="reply_content">([\s\S]*?)<\/div>/)
     const contentRendered = contentMatch ? contentMatch[1].trim() : ''
 
-    // Extract thanks count
-    const thanksMatch = content.match(/♥\s*(\d+)/)
+    // Extract thanks count - V2EX may use ♥, ❤, ❤️, or &hearts;
+    // Count can appear as: ♥ 3, <span class="small fade">3</span> near thank_area, etc.
+    const thanksMatch = content.match(/(?:♥|❤️?|&hearts;)\s*(\d+)/)
+      || content.match(/thank_area[\s\S]{0,100}?<span[^>]*>\s*(\d+)\s*<\/span>/)
     const thanks = thanksMatch ? parseInt(thanksMatch[1]) : 0
 
-    // Check if thanked (presence of thanked class)
-    const thanked = content.includes('thanked')
+    // Check if thanked (presence of thanked class or thank_confirmed)
+    const thanked = content.includes('thanked') || content.includes('thank_confirmed')
 
     if (username) {
       replies.push({
