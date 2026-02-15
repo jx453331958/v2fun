@@ -30,6 +30,7 @@ export default function TopicDetail() {
   const [thankedTopic, setThankedTopic] = useState(false)
   const [thankingTopic, setThankingTopic] = useState(false)
   const [replyError, setReplyError] = useState('')
+  const [appendedReplies, setAppendedReplies] = useState<V2Reply[]>([])
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const scrollToFloor = (location.state as { scrollToFloor?: number } | null)?.scrollToFloor
@@ -51,12 +52,13 @@ export default function TopicDetail() {
       totalPages,
     })
 
-  const allReplies = [...firstPageReplies, ...moreReplies]
+  const allReplies = [...firstPageReplies, ...moreReplies, ...appendedReplies]
 
   const fetchData = useCallback(async () => {
     if (!id) return
     const topicId = parseInt(id)
     reset()
+    setAppendedReplies([])
     setLoading(true)
     try {
       const [t, repliesData] = await Promise.all([
@@ -135,9 +137,30 @@ export default function TopicDetail() {
       if (res.success) {
         setReplyContent('')
         textareaRef.current?.blur()
-        // Refresh to show new reply
-        reset()
-        await fetchData()
+        // Reset textarea height
+        if (textareaRef.current) textareaRef.current.style.height = 'auto'
+        // Incrementally fetch only the last page to find the new reply
+        const topicId = parseInt(id)
+        let lastPage = Math.max(totalPages, 1)
+        let data = await web.replies(topicId, lastPage)
+        // If a new page was created, fetch it
+        if (data.totalPages > lastPage) {
+          lastPage = data.totalPages
+          setTotalPages(lastPage)
+          data = await web.replies(topicId, lastPage)
+        }
+        // Find replies not already displayed
+        const existingIds = new Set(allReplies.map(r => r.id))
+        const newReplies = data.result.filter(r => !existingIds.has(r.id))
+        if (newReplies.length > 0) {
+          const targetFloor = allReplies.length + newReplies.length
+          setAppendedReplies(prev => [...prev, ...newReplies])
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              scrollToElement(targetFloor)
+            })
+          })
+        }
       } else if (res.error === 'cookie_expired') {
         setReplyError('Cookie 已过期，请在个人页重新设置')
       } else {
