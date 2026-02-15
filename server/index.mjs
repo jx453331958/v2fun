@@ -314,12 +314,13 @@ const webLimiter = rateLimit({
 })
 app.use('/web', webLimiter)
 
-/** Parse V2EX relative time string to Unix timestamp */
+/** Parse V2EX time string to Unix timestamp */
 function parseRelativeTime(text) {
   const now = Date.now() / 1000
   if (!text) return now
-  const t = text.trim()
+  const t = text.replace(/<[^>]*>/g, '').trim()
   if (t === '刚刚') return now
+  // Relative: "3 天前", "2 小时 31 分钟前"
   let offset = 0
   const days = t.match(/(\d+)\s*天/)
   const hours = t.match(/(\d+)\s*小时/)
@@ -328,9 +329,12 @@ function parseRelativeTime(text) {
   if (hours) offset += parseInt(hours[1]) * 3600
   if (mins) offset += parseInt(mins[1]) * 60
   if (offset > 0) return now - offset
-  // Try absolute date: YYYY-MM-DD
-  const abs = t.match(/(\d{4}-\d{2}-\d{2})/)
-  if (abs) return new Date(abs[1]).getTime() / 1000
+  // Absolute: YYYY-MM-DD or YYYY-MM-DD HH:MM:SS
+  const abs = t.match(/(\d{4}-\d{2}-\d{2}[\s\dT:.+\-]*)/)
+  if (abs) { const ts = new Date(abs[1].trim()).getTime(); if (!isNaN(ts)) return ts / 1000 }
+  // Chinese format: "2024 年 12 月 24 日" or "2024年12月24日"
+  const cn = t.match(/(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日/)
+  if (cn) return new Date(parseInt(cn[1]), parseInt(cn[2]) - 1, parseInt(cn[3])).getTime() / 1000
   return now
 }
 
@@ -484,8 +488,9 @@ async function scrapeReplies(topicId, page, cookie, fwd) {
     const floor = floorMatch ? parseInt(floorMatch[1]) : 0
 
     // Extract time - prefer title attribute (exact datetime) over text content
-    const agoTitleMatch = content.match(/<span class="ago"\s+title="([^"]+)"/)
-    const agoTextMatch = content.match(/<span class="ago"[^>]*>([\s\S]*?)<\/span>/)
+    const agoTagMatch = content.match(/<span[^>]*class="ago"[^>]*>/)
+    const agoTitleMatch = agoTagMatch ? agoTagMatch[0].match(/title="([^"]+)"/) : null
+    const agoTextMatch = content.match(/<span[^>]*class="ago"[^>]*>([\s\S]*?)<\/span>/)
     const created = agoTitleMatch
       ? parseAbsoluteTime(agoTitleMatch[1])
       : parseRelativeTime(agoTextMatch ? agoTextMatch[1] : '')
