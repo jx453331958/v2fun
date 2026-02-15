@@ -14,6 +14,7 @@ const PORT = process.env.PORT || 3210
 const DATA_DIR = path.join(__dirname, '..', 'data')
 const SECRET_FILE = path.join(DATA_DIR, '.secret')
 const AUTH_FILE = path.join(DATA_DIR, 'auth.json')
+const PASSCODE_FILE = path.join(DATA_DIR, '.passcode')
 
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true })
@@ -68,6 +69,42 @@ function parseCookie(header, name) {
     if (pair.slice(0, idx).trim() === name) return pair.slice(idx + 1).trim()
   }
   return null
+}
+
+// ── Access passcode ───────────────────────────────────────
+function loadPasscode() {
+  if (fs.existsSync(PASSCODE_FILE)) {
+    const code = fs.readFileSync(PASSCODE_FILE, 'utf-8').trim()
+    if (/^\d{6}$/.test(code)) return code
+  }
+  const code = String(crypto.randomInt(0, 1000000)).padStart(6, '0')
+  fs.writeFileSync(PASSCODE_FILE, code, { encoding: 'utf-8', mode: 0o600 })
+  return code
+}
+const PASSCODE = loadPasscode()
+const PASSCODE_HMAC = hmac(PASSCODE)
+console.log(`Access passcode: ${PASSCODE}`)
+
+function verifyPasscodeCookie(req) {
+  const token = parseCookie(req.headers.cookie, 'v2fun_passcode')
+  if (!token) return false
+  const expected = Buffer.from(PASSCODE_HMAC, 'utf-8')
+  const actual = Buffer.from(token, 'utf-8')
+  return expected.length === actual.length && crypto.timingSafeEqual(expected, actual)
+}
+
+function setPasscodeCookie(res) {
+  const parts = [
+    `v2fun_passcode=${PASSCODE_HMAC}`,
+    'HttpOnly',
+    'SameSite=Strict',
+    'Path=/',
+    `Max-Age=${10 * 365 * 24 * 3600}`,
+  ]
+  if (process.env.NODE_ENV === 'production') {
+    parts.push('Secure')
+  }
+  res.setHeader('Set-Cookie', parts.join('; '))
 }
 
 function setSessionCookie(res, value, maxAge = 365 * 24 * 3600) {
@@ -240,6 +277,41 @@ app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
     res.setHeader('Access-Control-Max-Age', '86400')
     return res.sendStatus(204)
+  }
+  next()
+})
+
+// ── Passcode gate ─────────────────────────────────────────
+
+app.post('/auth/verify-passcode', express.json({ limit: '1kb' }), (req, res) => {
+  const { passcode } = req.body
+  if (!passcode || typeof passcode !== 'string') {
+    return res.status(400).json({ error: '参数错误' })
+  }
+  const expected = Buffer.from(PASSCODE, 'utf-8')
+  const actual = Buffer.from(passcode, 'utf-8')
+  if (expected.length !== actual.length || !crypto.timingSafeEqual(expected, actual)) {
+    return res.status(401).json({ error: '口令错误' })
+  }
+  setPasscodeCookie(res)
+  res.json({ success: true })
+})
+
+app.get('/auth/passcode-status', (req, res) => {
+  res.json({ verified: verifyPasscodeCookie(req) })
+})
+
+// Passcode protection middleware — block API/web/auth routes without valid passcode
+app.use((req, res, next) => {
+  // Skip passcode endpoints themselves
+  if (req.path === '/auth/verify-passcode' || req.path === '/auth/passcode-status') {
+    return next()
+  }
+  // Only protect /api, /web, and /auth routes
+  if (req.path.startsWith('/api') || req.path.startsWith('/web') || req.path.startsWith('/auth')) {
+    if (!verifyPasscodeCookie(req)) {
+      return res.status(403).json({ error: 'passcode_required' })
+    }
   }
   next()
 })
