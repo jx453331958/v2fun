@@ -334,6 +334,14 @@ function parseRelativeTime(text) {
   return now
 }
 
+/** Parse absolute datetime string like "2024-12-24 19:24:23 +08:00" */
+function parseAbsoluteTime(text) {
+  if (!text) return Date.now() / 1000
+  const ts = new Date(text).getTime()
+  if (!isNaN(ts)) return ts / 1000
+  return Date.now() / 1000
+}
+
 /** Scrape V2EX notifications page and return parsed notifications */
 async function scrapeNotifications(cookie, page, fwd) {
   const url = `https://www.v2ex.com/notifications?p=${page}`
@@ -475,9 +483,12 @@ async function scrapeReplies(topicId, page, cookie, fwd) {
     const floorMatch = content.match(/<span class="no">(\d+)<\/span>/)
     const floor = floorMatch ? parseInt(floorMatch[1]) : 0
 
-    // Extract time
-    const timeMatch = content.match(/<span class="ago"[^>]*>([\s\S]*?)<\/span>/)
-    const created = parseRelativeTime(timeMatch ? timeMatch[1] : '')
+    // Extract time - prefer title attribute (exact datetime) over text content
+    const agoTitleMatch = content.match(/<span class="ago"\s+title="([^"]+)"/)
+    const agoTextMatch = content.match(/<span class="ago"[^>]*>([\s\S]*?)<\/span>/)
+    const created = agoTitleMatch
+      ? parseAbsoluteTime(agoTitleMatch[1])
+      : parseRelativeTime(agoTextMatch ? agoTextMatch[1] : '')
 
     // Extract reply content
     const contentMatch = content.match(/<div class="reply_content">([\s\S]*?)<\/div>/)
