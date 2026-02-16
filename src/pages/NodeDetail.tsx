@@ -1,71 +1,52 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import { v1, web } from '../api/client'
 import type { V2Topic, V2Node } from '../types'
 import Header from '../components/Header'
 import TopicCard from '../components/TopicCard'
 import Loading from '../components/Loading'
-import Pagination from '../components/Pagination'
 import PullToRefreshIndicator from '../components/PullToRefreshIndicator'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
+import { useInfiniteScroll } from '../hooks/useInfiniteScroll'
 import { sanitizeHtml } from '../utils/sanitize'
 import styles from './NodeDetail.module.css'
 
 export default function NodeDetail() {
   const { name } = useParams<{ name: string }>()
   const [node, setNode] = useState<V2Node | null>(null)
-  const [topics, setTopics] = useState<V2Topic[]>([])
-  const [page, setPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const prevNameRef = useRef(name)
 
-  // Reset page to 1 when node name changes
-  useEffect(() => {
-    if (name !== prevNameRef.current) {
-      prevNameRef.current = name
-      setPage(1)
-    }
-  }, [name])
-
-  // Fetch node info only once per node name
   useEffect(() => {
     if (!name) return
     v1.nodeInfo(name).then(setNode).catch(() => null)
   }, [name])
 
-  // Fetch topics whenever name or page changes
-  const fetchTopics = useCallback(async () => {
-    if (!name) return
-    setLoading(true)
-    setError('')
-    try {
-      const res = await web.nodeTopics(name, page)
-      if (res.success) {
-        setTopics(res.result || [])
-        setTotalPages(res.totalPages || 1)
-      } else {
-        setError('加载失败')
-      }
-    } catch {
-      setError('网络错误，请重试')
-    } finally {
-      setLoading(false)
+  const fetchPage = useCallback(async (page: number) => {
+    if (!name) return { items: [] as V2Topic[], hasMore: false }
+    const res = await web.nodeTopics(name, page)
+    if (!res.success) throw new Error('加载失败')
+    return {
+      items: res.result || [],
+      hasMore: page < (res.totalPages || 1),
     }
-  }, [name, page])
+  }, [name])
 
-  useEffect(() => {
-    fetchTopics()
-  }, [fetchTopics])
-
-  const handlePageChange = (newPage: number) => {
-    setPage(newPage)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
+  const {
+    items: topics,
+    isLoading,
+    isInitialLoading,
+    isExhausted,
+    error,
+    sentinelRef,
+    reset,
+    retry,
+  } = useInfiniteScroll<V2Topic>({
+    fetchPage,
+    resetKey: name || '',
+    getItemKey: (topic) => topic.id,
+  })
 
   const { pullDistance, status, pullStyle } = usePullToRefresh({
-    onRefresh: fetchTopics,
+    onRefresh: async () => { reset() },
   })
 
   return (
@@ -75,12 +56,23 @@ export default function NodeDetail() {
       <PullToRefreshIndicator pullDistance={pullDistance} status={status} />
 
       <div style={pullStyle}>
-        {loading && status === 'idle' ? (
+        {isInitialLoading && status === 'idle' ? (
           <Loading />
-        ) : error ? (
+        ) : error && topics.length === 0 ? (
           <div className={styles.empty}>
             <p>{error}</p>
-            <button onClick={fetchTopics} style={{ marginTop: 12, padding: '6px 20px', background: 'var(--accent)', color: 'var(--bg-primary)', borderRadius: 'var(--radius-lg)', fontSize: '0.85rem', fontWeight: 600 }}>
+            <button
+              onClick={retry}
+              style={{
+                marginTop: 12,
+                padding: '6px 20px',
+                background: 'var(--accent)',
+                color: 'var(--bg-primary)',
+                borderRadius: 'var(--radius-lg)',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+              }}
+            >
               重试
             </button>
           </div>
@@ -95,13 +87,48 @@ export default function NodeDetail() {
             <div className={styles.topicCount}>
               {node?.topics ? `${node.topics} 个主题` : `${topics.length} 个主题`}
             </div>
+
             {topics.map((topic, i) => (
               <TopicCard key={topic.id} topic={topic} index={i} />
             ))}
-            {topics.length === 0 && (
+
+            {topics.length === 0 && !isLoading && (
               <div className={styles.empty}>该节点暂无主题</div>
             )}
-            <Pagination page={page} totalPages={totalPages} onPageChange={handlePageChange} />
+
+            {error && topics.length > 0 && (
+              <div className={styles.empty}>
+                <p>{error}</p>
+                <button
+                  onClick={retry}
+                  style={{
+                    marginTop: 12,
+                    padding: '6px 20px',
+                    background: 'var(--accent)',
+                    color: 'var(--bg-primary)',
+                    borderRadius: 'var(--radius-lg)',
+                    fontSize: '0.85rem',
+                    fontWeight: 600,
+                  }}
+                >
+                  加载更多
+                </button>
+              </div>
+            )}
+
+            {isLoading && !isInitialLoading && (
+              <Loading text="加载更多..." />
+            )}
+
+            {isExhausted && topics.length > 0 && (
+              <div className={styles.empty} style={{ padding: '24px 20px' }}>
+                没有更多了
+              </div>
+            )}
+
+            {!isExhausted && !error && (
+              <div ref={sentinelRef} style={{ height: 1 }} />
+            )}
           </>
         )}
       </div>
