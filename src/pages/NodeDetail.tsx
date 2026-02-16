@@ -24,9 +24,14 @@ export default function NodeDetail() {
     if (!name) return { items: [] as V2Topic[], hasMore: false }
     const res = await web.nodeTopics(name, page)
     if (!res.success) throw new Error('加载失败')
+    const items = res.result || []
+    // V2EX shows 20 topics per page. If totalPages is unavailable (parsed as 1),
+    // fall back to checking if a full page of items was returned.
+    const hasMoreByPage = page < (res.totalPages || 1)
+    const hasMoreByCount = items.length >= 20
     return {
-      items: res.result || [],
-      hasMore: page < (res.totalPages || 1),
+      items,
+      hasMore: res.totalPages > 1 ? hasMoreByPage : hasMoreByCount,
     }
   }, [name])
 

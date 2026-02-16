@@ -171,6 +171,8 @@ function buildCookieHeader(cookie) {
 }
 
 const FALLBACK_UA = 'Mozilla/5.0 (compatible; V2Fun/1.0)'
+// Desktop UA for scraping — V2EX strips pagination from mobile pages
+const SCRAPE_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 
 /** Extract forwarding headers from incoming request */
 function getForwardHeaders(req) {
@@ -430,7 +432,8 @@ async function scrapeNotifications(cookie, page, fwd) {
   const res = await fetch(url, {
     headers: {
       'Cookie': buildCookieHeader(cookie),
-      'User-Agent': fwd.userAgent,
+      // Always use desktop UA — V2EX strips pagination HTML from mobile pages
+      'User-Agent': SCRAPE_UA,
       'Accept': 'text/html,application/xhtml+xml',
       ...(fwd.acceptLanguage && { 'Accept-Language': fwd.acceptLanguage }),
     },
@@ -524,7 +527,8 @@ async function scrapeNotifications(cookie, page, fwd) {
 async function scrapeReplies(topicId, page, cookie, fwd) {
   const url = `https://www.v2ex.com/t/${topicId}?p=${page}`
   const headers = {
-    'User-Agent': fwd.userAgent,
+    // Always use desktop UA — V2EX strips pagination HTML from mobile pages
+    'User-Agent': SCRAPE_UA,
     'Accept': 'text/html,application/xhtml+xml',
     ...(fwd.acceptLanguage && { 'Accept-Language': fwd.acceptLanguage }),
   }
@@ -644,7 +648,8 @@ async function scrapeReplies(topicId, page, cookie, fwd) {
 /** Scrape any V2EX topic-list page and return parsed topics + totalPages */
 async function scrapeTopicList(url, cookie, fwd) {
   const headers = {
-    'User-Agent': fwd.userAgent,
+    // Always use desktop UA — V2EX strips pagination HTML from mobile pages
+    'User-Agent': SCRAPE_UA,
     'Accept': 'text/html,application/xhtml+xml',
     ...(fwd.acceptLanguage && { 'Accept-Language': fwd.acceptLanguage }),
   }
@@ -653,6 +658,7 @@ async function scrapeTopicList(url, cookie, fwd) {
   }
   const res = await fetch(url, { headers, redirect: 'manual' })
   if (res.status >= 300) {
+    console.warn(`[scrapeTopicList] ${url} → ${res.status}`)
     return { topics: [], totalPages: 1 }
   }
   const html = await res.text()
@@ -675,6 +681,21 @@ async function scrapeTopicList(url, cookie, fwd) {
       const n = parseInt(pageCurrent[1])
       if (n > totalPages) totalPages = n
     }
+  }
+
+  // Also check <a class="page_current"> (V2EX may use <a> instead of <span>)
+  if (totalPages === 1) {
+    const pageCurrentLink = html.match(/<a[^>]*class="page_current"[^>]*>(\d+)<\/a>/g)
+    if (pageCurrentLink) {
+      for (const link of pageCurrentLink) {
+        const n = parseInt(link.match(/>(\d+)</)[1])
+        if (n > totalPages) totalPages = n
+      }
+    }
+  }
+
+  if (totalPages === 1) {
+    console.log(`[scrapeTopicList] ${url} → totalPages=1, html=${html.length} bytes`)
   }
 
   // Parse topics by splitting on item_title markers
@@ -799,6 +820,7 @@ app.get('/web/node/:nodeName', webReadLimiter, async (req, res) => {
   const fwd = getForwardHeaders(req)
   try {
     const { topics, totalPages } = await scrapeNodeTopics(nodeName, page, cookie, fwd)
+    console.log(`[web/node] ${nodeName} p=${page} → ${topics.length} topics, totalPages=${totalPages}`)
     res.json({ success: true, result: topics, totalPages })
   } catch (err) {
     console.error('[web/node]', err)
