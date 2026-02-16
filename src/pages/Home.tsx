@@ -3,10 +3,9 @@ import { web } from '../api/client'
 import type { V2Topic } from '../types'
 import TopicCard from '../components/TopicCard'
 import { TopicSkeleton } from '../components/Loading'
-import Loading from '../components/Loading'
+import Pagination from '../components/Pagination'
 import PullToRefreshIndicator from '../components/PullToRefreshIndicator'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
-import { useInfiniteScroll } from '../hooks/useInfiniteScroll'
 import styles from './Home.module.css'
 
 type Tab = 'hot' | 'latest'
@@ -16,46 +15,24 @@ let savedTab: Tab = 'latest'
 
 export default function Home() {
   const [tab, setTab] = useState<Tab>(savedTab)
-  const [firstPageTopics, setFirstPageTopics] = useState<V2Topic[]>([])
+  const [topics, setTopics] = useState<V2Topic[]>([])
+  const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  const fetchPage = useCallback(
-    async (page: number) => {
-      if (tab !== 'latest') return []
-      try {
-        const res = await web.latestTopics(page)
-        if (res.success) return res.result || []
-      } catch {
-        // pagination failed
-      }
-      return []
-    },
-    [tab]
-  )
-
-  const { items: moreTopics, hasMore, isLoadingMore, sentinelRef, reset } =
-    useInfiniteScroll<V2Topic>({
-      fetchPage,
-      pageSize: 20,
-      enabled: !loading && tab === 'latest' && totalPages > 1,
-      totalPages,
-    })
-
-  const fetchFirstPage = useCallback(async (t: Tab) => {
-    reset()
+  const fetchData = useCallback(async (t: Tab, p: number) => {
     setLoading(true)
     setError('')
     try {
       const res = t === 'hot'
         ? await web.hotTopics()
-        : await web.latestTopics(1)
+        : await web.latestTopics(p)
       if (res.success) {
-        setFirstPageTopics(res.result || [])
+        setTopics(res.result || [])
         setTotalPages(res.totalPages || 1)
       } else {
-        setFirstPageTopics([])
+        setTopics([])
         setTotalPages(1)
       }
     } catch (err) {
@@ -63,21 +40,20 @@ export default function Home() {
     } finally {
       setLoading(false)
     }
-  }, [reset])
+  }, [])
 
   useEffect(() => {
-    fetchFirstPage(tab)
-  }, [tab, fetchFirstPage])
+    fetchData(tab, page)
+  }, [tab, page, fetchData])
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
   const { pullDistance, status, pullStyle } = usePullToRefresh({
-    onRefresh: async () => {
-      await fetchFirstPage(tab)
-    },
+    onRefresh: () => fetchData(tab, page),
   })
-
-  const allTopics = tab === 'latest'
-    ? [...firstPageTopics, ...moreTopics]
-    : firstPageTopics
 
   return (
     <div className={styles.page}>
@@ -86,13 +62,13 @@ export default function Home() {
         <div className={styles.tabs}>
           <button
             className={`${styles.tab} ${tab === 'hot' ? styles.active : ''}`}
-            onClick={() => { savedTab = 'hot'; setTab('hot') }}
+            onClick={() => { savedTab = 'hot'; setTab('hot'); setPage(1) }}
           >
             热门
           </button>
           <button
             className={`${styles.tab} ${tab === 'latest' ? styles.active : ''}`}
-            onClick={() => { savedTab = 'latest'; setTab('latest') }}
+            onClick={() => { savedTab = 'latest'; setTab('latest'); setPage(1) }}
           >
             最新
           </button>
@@ -111,27 +87,19 @@ export default function Home() {
         ) : error ? (
           <div className={styles.error}>
             <p>{error}</p>
-            <button className={styles.retryBtn} onClick={() => fetchFirstPage(tab)}>
+            <button className={styles.retryBtn} onClick={() => fetchData(tab, page)}>
               重试
             </button>
           </div>
         ) : (
           <div>
-            {allTopics.map((topic) => (
+            {topics.map((topic) => (
               <TopicCard key={topic.id} topic={topic} />
             ))}
-            {tab === 'latest' && (
-              <>
-                <div ref={sentinelRef} />
-                {isLoadingMore && <Loading text="加载更多..." />}
-                {!hasMore && allTopics.length > 0 && (
-                  <div className={styles.noMore}>没有更多了</div>
-                )}
-              </>
-            )}
-            {allTopics.length === 0 && (
+            {topics.length === 0 && (
               <div className={styles.empty}>暂无主题</div>
             )}
+            <Pagination page={page} totalPages={totalPages} onPageChange={handlePageChange} />
           </div>
         )}
       </div>

@@ -7,74 +7,63 @@ import type { V2Member, V2Topic } from '../types'
 import Header from '../components/Header'
 import TopicCard from '../components/TopicCard'
 import Loading from '../components/Loading'
+import Pagination from '../components/Pagination'
 import PullToRefreshIndicator from '../components/PullToRefreshIndicator'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
-import { useInfiniteScroll } from '../hooks/useInfiniteScroll'
 import styles from './MemberPage.module.css'
 
 export default function MemberPage() {
   const { username } = useParams<{ username: string }>()
   const [member, setMember] = useState<V2Member | null>(null)
-  const [firstPageTopics, setFirstPageTopics] = useState<V2Topic[]>([])
+  const [topics, setTopics] = useState<V2Topic[]>([])
+  const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [loading, setLoading] = useState(true)
 
-  const fetchPage = useCallback(
-    async (page: number) => {
-      if (!username) return []
-      try {
-        const res = await web.memberTopics(username, page)
-        if (res.success) return res.result || []
-      } catch {
-        // pagination failed
-      }
-      return []
-    },
-    [username]
-  )
-
-  const { items: moreTopics, hasMore, isLoadingMore, sentinelRef, reset } =
-    useInfiniteScroll<V2Topic>({
-      fetchPage,
-      pageSize: 20,
-      enabled: !loading && totalPages > 1,
-      totalPages,
-    })
-
-  const fetchData = useCallback(async () => {
+  const fetchTopics = useCallback(async (p: number) => {
     if (!username) return
-    reset()
     setLoading(true)
     try {
-      const [m, topicsRes] = await Promise.all([
-        v1.memberInfo(username),
-        web.memberTopics(username, 1),
-      ])
-      setMember(m)
+      const topicsRes = await web.memberTopics(username, p)
       if (topicsRes.success) {
-        setFirstPageTopics(topicsRes.result || [])
+        setTopics(topicsRes.result || [])
         setTotalPages(topicsRes.totalPages || 1)
       }
     } finally {
       setLoading(false)
     }
-  }, [username, reset])
+  }, [username])
 
   useEffect(() => {
-    fetchData()
-  }, [fetchData])
+    if (!username) return
+    setPage(1)
+    setLoading(true)
+    Promise.all([
+      v1.memberInfo(username),
+      web.memberTopics(username, 1),
+    ]).then(([m, topicsRes]) => {
+      setMember(m)
+      if (topicsRes.success) {
+        setTopics(topicsRes.result || [])
+        setTotalPages(topicsRes.totalPages || 1)
+      }
+    }).finally(() => setLoading(false))
+  }, [username])
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage)
+    fetchTopics(newPage)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
   const { pullDistance, status, pullStyle } = usePullToRefresh({
-    onRefresh: async () => {
-      reset()
-      await fetchData()
-    },
+    onRefresh: () => fetchTopics(page),
   })
 
   // Scraping /member/{username}/topics doesn't include avatars in topic entries,
   // so fill them in from the member profile we already fetched via V1 API.
   const memberAvatar = member?.avatar_large || member?.avatar || ''
-  const allTopics = [...firstPageTopics, ...moreTopics].map((t) =>
+  const displayTopics = topics.map((t) =>
     t.member.avatar ? t : { ...t, member: { ...t.member, avatar: memberAvatar, avatar_mini: memberAvatar, avatar_normal: memberAvatar, avatar_large: memberAvatar } }
   )
 
@@ -127,19 +116,15 @@ export default function MemberPage() {
           主题
         </div>
 
-        {allTopics.map((topic) => (
+        {displayTopics.map((topic) => (
           <TopicCard key={topic.id} topic={topic} />
         ))}
 
-        <div ref={sentinelRef} />
-        {isLoadingMore && <Loading text="加载更多..." />}
-        {!hasMore && allTopics.length > 0 && (
-          <div className={styles.noMore}>没有更多了</div>
-        )}
-
-        {allTopics.length === 0 && (
+        {displayTopics.length === 0 && (
           <div className={styles.empty}>暂无主题</div>
         )}
+
+        <Pagination page={page} totalPages={totalPages} onPageChange={handlePageChange} />
       </div>
     </div>
   )

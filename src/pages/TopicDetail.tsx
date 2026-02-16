@@ -7,10 +7,10 @@ import type { V2Topic, V2Reply } from '../types'
 import Header from '../components/Header'
 import ReplyItem from '../components/ReplyItem'
 import Loading from '../components/Loading'
+import Pagination from '../components/Pagination'
 import PullToRefreshIndicator from '../components/PullToRefreshIndicator'
 import { useAuth } from '../hooks/useAuth'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
-import { useInfiniteScroll } from '../hooks/useInfiniteScroll'
 import { sanitizeHtml } from '../utils/sanitize'
 import styles from './TopicDetail.module.css'
 
@@ -21,7 +21,8 @@ export default function TopicDetail() {
   const location = useLocation()
   const { isLoggedIn } = useAuth()
   const [topic, setTopic] = useState<V2Topic | null>(null)
-  const [firstPageReplies, setFirstPageReplies] = useState<V2Reply[]>([])
+  const [replies, setReplies] = useState<V2Reply[]>([])
+  const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [loading, setLoading] = useState(true)
   const [highlightFloor, setHighlightFloor] = useState<number | null>(null)
@@ -30,82 +31,61 @@ export default function TopicDetail() {
   const [thankedTopic, setThankedTopic] = useState(false)
   const [thankingTopic, setThankingTopic] = useState(false)
   const [replyError, setReplyError] = useState('')
-  const [appendedReplies, setAppendedReplies] = useState<V2Reply[]>([])
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const scrollToFloor = (location.state as { scrollToFloor?: number } | null)?.scrollToFloor
 
-  const fetchRepliesPage = useCallback(
-    async (page: number) => {
-      if (!id) return []
-      const data = await web.replies(parseInt(id), page)
-      return data.result
-    },
-    [id]
-  )
+  const fetchReplies = useCallback(async (p: number) => {
+    if (!id) return
+    setLoading(true)
+    try {
+      const data = await web.replies(parseInt(id), p)
+      setReplies(data.result)
+      setTotalPages(data.totalPages)
+    } finally {
+      setLoading(false)
+    }
+  }, [id])
 
-  const { items: moreReplies, hasMore, isLoadingMore, sentinelRef, reset, loadUpToPage } =
-    useInfiniteScroll<V2Reply>({
-      fetchPage: fetchRepliesPage,
-      pageSize: PAGE_SIZE,
-      enabled: !loading && totalPages > 1,
-      totalPages,
-    })
-
-  const allReplies = [...firstPageReplies, ...moreReplies, ...appendedReplies]
-
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (initialPage: number) => {
     if (!id) return
     const topicId = parseInt(id)
-    reset()
-    setAppendedReplies([])
     setLoading(true)
     try {
       const [t, repliesData] = await Promise.all([
         v1.topicById(topicId).then((arr) => arr[0]),
-        web.replies(topicId, 1),
+        web.replies(topicId, initialPage),
       ])
       setTopic(t)
-      setFirstPageReplies(repliesData.result)
+      setReplies(repliesData.result)
       setTotalPages(repliesData.totalPages)
+      setPage(initialPage)
     } finally {
       setLoading(false)
     }
-  }, [id, reset])
+  }, [id])
 
+  // Initial load — if scrollToFloor is set, jump to that page directly
   useEffect(() => {
-    fetchData()
-  }, [fetchData])
+    const initialPage = scrollToFloor ? Math.ceil(scrollToFloor / PAGE_SIZE) : 1
+    fetchData(initialPage)
+  }, [fetchData, scrollToFloor])
 
-  // Handle scrollToFloor after data is loaded
+  // After data loads, scroll to the target floor element
   useEffect(() => {
     if (!scrollToFloor || loading || !topic) return
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        scrollToElement(scrollToFloor)
+      })
+    })
+  }, [scrollToFloor, loading, topic])
 
-    const doScroll = async () => {
-      const targetPage = Math.ceil(scrollToFloor / PAGE_SIZE)
-
-      if (targetPage > 1) {
-        // Need to load more pages first
-        // loadUpToPage puts ALL pages (1..N) into hook items,
-        // so clear firstPageReplies to avoid duplicates
-        await loadUpToPage(targetPage)
-        setFirstPageReplies([])
-        // Wait for render
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            scrollToElement(scrollToFloor)
-          })
-        })
-      } else {
-        // Already on first page, just scroll
-        requestAnimationFrame(() => {
-          scrollToElement(scrollToFloor)
-        })
-      }
-    }
-
-    doScroll()
-  }, [scrollToFloor, loading, topic, loadUpToPage])
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage)
+    fetchReplies(newPage)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
   const scrollToElement = (floor: number) => {
     const el = document.getElementById(`reply-floor-${floor}`)
@@ -117,10 +97,7 @@ export default function TopicDetail() {
   }
 
   const { pullDistance, status, pullStyle } = usePullToRefresh({
-    onRefresh: async () => {
-      reset()
-      await fetchData()
-    },
+    onRefresh: () => fetchReplies(page),
   })
 
   const openInV2EX = () => {
@@ -139,28 +116,24 @@ export default function TopicDetail() {
         textareaRef.current?.blur()
         // Reset textarea height
         if (textareaRef.current) textareaRef.current.style.height = 'auto'
-        // Incrementally fetch only the last page to find the new reply
+        // Jump to the last page to see the new reply
         const topicId = parseInt(id)
-        let lastPage = Math.max(totalPages, 1)
-        let data = await web.replies(topicId, lastPage)
+        const data = await web.replies(topicId, totalPages)
         // If a new page was created, fetch it
-        if (data.totalPages > lastPage) {
-          lastPage = data.totalPages
-          setTotalPages(lastPage)
-          data = await web.replies(topicId, lastPage)
+        if (data.totalPages > totalPages) {
+          const lastData = await web.replies(topicId, data.totalPages)
+          setTotalPages(lastData.totalPages)
+          setPage(lastData.totalPages)
+          setReplies(lastData.result)
+        } else {
+          setTotalPages(data.totalPages)
+          setPage(data.totalPages)
+          setReplies(data.result)
         }
-        // Find replies not already displayed
-        const existingIds = new Set(allReplies.map(r => r.id))
-        const newReplies = data.result.filter(r => !existingIds.has(r.id))
-        if (newReplies.length > 0) {
-          const targetFloor = allReplies.length + newReplies.length
-          setAppendedReplies(prev => [...prev, ...newReplies])
-          requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-              scrollToElement(targetFloor)
-            })
-          })
-        }
+        // Scroll to bottom to see the new reply
+        requestAnimationFrame(() => {
+          window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })
+        })
       } else if (res.error === 'cookie_expired') {
         setReplyError('Cookie 已过期，请在个人页重新设置')
       } else {
@@ -270,26 +243,22 @@ export default function TopicDetail() {
         </article>
 
         <div className={styles.repliesSection}>
-          {allReplies.length === 0 ? (
+          {replies.length === 0 && page === 1 ? (
             <div className={styles.noReplies}>暂无回复，来说两句？</div>
           ) : (
             <>
-              {allReplies.map((reply, i) => (
+              {replies.map((reply, i) => (
                 <ReplyItem
                   key={reply.id}
                   reply={reply}
-                  floor={i + 1}
+                  floor={(page - 1) * PAGE_SIZE + i + 1}
                   topicId={parseInt(id!)}
-                  highlight={highlightFloor === i + 1}
+                  highlight={highlightFloor === (page - 1) * PAGE_SIZE + i + 1}
                   hasCookie={isLoggedIn}
                   onReplyTo={isLoggedIn ? handleReplyTo : undefined}
                 />
               ))}
-              <div ref={sentinelRef} />
-              {isLoadingMore && <Loading text="加载更多回复..." />}
-              {!hasMore && allReplies.length > 0 && (
-                <div className={styles.noMore}>没有更多回复了</div>
-              )}
+              <Pagination page={page} totalPages={totalPages} onPageChange={handlePageChange} />
             </>
           )}
         </div>
