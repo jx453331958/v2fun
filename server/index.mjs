@@ -430,8 +430,28 @@ async function scrapeNotifications(cookie, page, fwd) {
     },
     redirect: 'manual',
   })
-  if (res.status >= 300) return []
+  if (res.status >= 300) return { notifications: [], totalPages: 1 }
   const html = await res.text()
+
+  // Extract total pages from pagination
+  let totalPages = 1
+  const pageInputMatch = html.match(/<input[^>]*class="page_input"[^>]*max="(\d+)"/)
+  if (pageInputMatch) {
+    totalPages = parseInt(pageInputMatch[1])
+  } else {
+    const pageLinks = html.match(/<a[^>]*class="page_normal"[^>]*>(\d+)<\/a>/g)
+    if (pageLinks) {
+      for (const link of pageLinks) {
+        const n = parseInt(link.match(/>(\d+)</)[1])
+        if (n > totalPages) totalPages = n
+      }
+    }
+    const pageCurrent = html.match(/<span class="page_current">(\d+)<\/span>/)
+    if (pageCurrent) {
+      const n = parseInt(pageCurrent[1])
+      if (n > totalPages) totalPages = n
+    }
+  }
 
   const notifications = []
   // Split by notification cells: <div class="cell" id="n_xxxxx">
@@ -491,7 +511,7 @@ async function scrapeNotifications(cookie, page, fwd) {
       })
     }
   }
-  return notifications
+  return { notifications, totalPages }
 }
 
 /** Scrape V2EX topic page and return parsed replies + totalPages */
@@ -643,6 +663,11 @@ async function scrapeTopicList(url, cookie, fwd) {
         const n = parseInt(link.match(/>(\d+)</)[1])
         if (n > totalPages) totalPages = n
       }
+    }
+    const pageCurrent = html.match(/<span class="page_current">(\d+)<\/span>/)
+    if (pageCurrent) {
+      const n = parseInt(pageCurrent[1])
+      if (n > totalPages) totalPages = n
     }
   }
 
@@ -870,11 +895,11 @@ app.get('/web/notifications', async (req, res) => {
   const page = parseInt(req.query.p) || 1
   const fwd = getForwardHeaders(req)
   try {
-    const notifications = await scrapeNotifications(cookie, page, fwd)
-    res.json({ success: true, result: notifications })
+    const { notifications, totalPages } = await scrapeNotifications(cookie, page, fwd)
+    res.json({ success: true, result: notifications, totalPages })
   } catch (err) {
     console.error('[web/notifications]', err)
-    res.json({ success: true, result: [] })
+    res.json({ success: true, result: [], totalPages: 1 })
   }
 })
 
