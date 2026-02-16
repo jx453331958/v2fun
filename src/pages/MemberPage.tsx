@@ -2,43 +2,76 @@ import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import { formatDistanceToNow } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
-import { v1 } from '../api/client'
+import { v1, web } from '../api/client'
 import type { V2Member, V2Topic } from '../types'
 import Header from '../components/Header'
 import TopicCard from '../components/TopicCard'
 import Loading from '../components/Loading'
 import PullToRefreshIndicator from '../components/PullToRefreshIndicator'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
+import { useInfiniteScroll } from '../hooks/useInfiniteScroll'
 import styles from './MemberPage.module.css'
 
 export default function MemberPage() {
   const { username } = useParams<{ username: string }>()
   const [member, setMember] = useState<V2Member | null>(null)
-  const [topics, setTopics] = useState<V2Topic[]>([])
+  const [firstPageTopics, setFirstPageTopics] = useState<V2Topic[]>([])
+  const [totalPages, setTotalPages] = useState(1)
   const [loading, setLoading] = useState(true)
+
+  const fetchPage = useCallback(
+    async (page: number) => {
+      if (!username) return []
+      try {
+        const res = await web.memberTopics(username, page)
+        if (res.success) return res.result || []
+      } catch {
+        // pagination failed
+      }
+      return []
+    },
+    [username]
+  )
+
+  const { items: moreTopics, hasMore, isLoadingMore, sentinelRef, reset } =
+    useInfiniteScroll<V2Topic>({
+      fetchPage,
+      pageSize: 20,
+      enabled: !loading && totalPages > 1,
+      totalPages,
+    })
 
   const fetchData = useCallback(async () => {
     if (!username) return
+    reset()
     setLoading(true)
     try {
-      const [m, t] = await Promise.all([
+      const [m, topicsRes] = await Promise.all([
         v1.memberInfo(username),
-        v1.topicsByUser(username),
+        web.memberTopics(username, 1),
       ])
       setMember(m)
-      setTopics(t)
+      if (topicsRes.success) {
+        setFirstPageTopics(topicsRes.result || [])
+        setTotalPages(topicsRes.totalPages || 1)
+      }
     } finally {
       setLoading(false)
     }
-  }, [username])
+  }, [username, reset])
 
   useEffect(() => {
     fetchData()
   }, [fetchData])
 
   const { pullDistance, status, pullStyle } = usePullToRefresh({
-    onRefresh: fetchData,
+    onRefresh: async () => {
+      reset()
+      await fetchData()
+    },
   })
+
+  const allTopics = [...firstPageTopics, ...moreTopics]
 
   if (loading && status === 'idle') {
     return (
@@ -86,14 +119,20 @@ export default function MemberPage() {
         )}
 
         <div className={styles.topicsHeader}>
-          最近主题 ({topics.length})
+          主题
         </div>
 
-        {topics.map((topic) => (
+        {allTopics.map((topic) => (
           <TopicCard key={topic.id} topic={topic} />
         ))}
 
-        {topics.length === 0 && (
+        <div ref={sentinelRef} />
+        {isLoadingMore && <Loading text="加载更多..." />}
+        {!hasMore && allTopics.length > 0 && (
+          <div className={styles.noMore}>没有更多了</div>
+        )}
+
+        {allTopics.length === 0 && (
           <div className={styles.empty}>暂无主题</div>
         )}
       </div>

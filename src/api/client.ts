@@ -79,6 +79,18 @@ export const web = {
     fetch(`/web/node/${encodeURIComponent(nodeName)}?p=${page}`, { credentials: 'same-origin' })
       .then(r => r.json()) as Promise<{ success: boolean; result: V2Topic[]; totalPages: number }>,
 
+  hotTopics: (page = 1) =>
+    fetch(`/web/hot?p=${page}`, { credentials: 'same-origin' })
+      .then(r => r.json()) as Promise<{ success: boolean; result: V2Topic[]; totalPages: number }>,
+
+  latestTopics: (page = 1) =>
+    fetch(`/web/latest?p=${page}`, { credentials: 'same-origin' })
+      .then(r => r.json()) as Promise<{ success: boolean; result: V2Topic[]; totalPages: number }>,
+
+  memberTopics: (username: string, page = 1) =>
+    fetch(`/web/member/${encodeURIComponent(username)}/topics?p=${page}`, { credentials: 'same-origin' })
+      .then(r => r.json()) as Promise<{ success: boolean; result: V2Topic[]; totalPages: number }>,
+
   replies: (topicId: number, page = 1) =>
     fetch(`/web/replies/${topicId}?p=${page}`, { credentials: 'same-origin' })
       .then(r => r.json()) as Promise<{ success: boolean; result: V2Reply[]; totalPages: number }>,

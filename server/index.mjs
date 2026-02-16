@@ -615,8 +615,8 @@ async function scrapeReplies(topicId, page, cookie, fwd) {
 }
 
 /** Scrape V2EX node page and return parsed topics + totalPages */
-async function scrapeNodeTopics(nodeName, page, cookie, fwd) {
-  const url = `https://www.v2ex.com/go/${encodeURIComponent(nodeName)}?p=${page}`
+/** Scrape any V2EX topic-list page and return parsed topics + totalPages */
+async function scrapeTopicList(url, cookie, fwd) {
   const headers = {
     'User-Agent': fwd.userAgent,
     'Accept': 'text/html,application/xhtml+xml',
@@ -726,9 +726,9 @@ async function scrapeNodeTopics(nodeName, page, cookie, fwd) {
         },
         node: {
           id: 0,
-          name: nodeMatch ? nodeMatch[1] : nodeName,
+          name: nodeMatch ? nodeMatch[1] : '',
           url: '',
-          title: nodeMatch ? nodeMatch[2] : nodeName,
+          title: nodeMatch ? nodeMatch[2] : '',
           title_alternative: '',
           topics: 0,
           stars: 0,
@@ -750,6 +750,11 @@ async function scrapeNodeTopics(nodeName, page, cookie, fwd) {
   return { topics, totalPages }
 }
 
+async function scrapeNodeTopics(nodeName, page, cookie, fwd) {
+  const url = `https://www.v2ex.com/go/${encodeURIComponent(nodeName)}?p=${page}`
+  return scrapeTopicList(url, cookie, fwd)
+}
+
 app.get('/web/node/:nodeName', async (req, res) => {
   const nodeName = req.params.nodeName
   if (!nodeName) {
@@ -766,6 +771,51 @@ app.get('/web/node/:nodeName', async (req, res) => {
     res.json({ success: true, result: topics, totalPages })
   } catch (err) {
     console.error('[web/node]', err)
+    res.json({ success: true, result: [], totalPages: 1 })
+  }
+})
+
+app.get('/web/hot', async (req, res) => {
+  const cookie = verifySession(req) ? getStoredCookie() : null
+  const fwd = getForwardHeaders(req)
+  try {
+    const url = 'https://www.v2ex.com/?tab=hot'
+    const { topics, totalPages } = await scrapeTopicList(url, cookie, fwd)
+    res.json({ success: true, result: topics, totalPages })
+  } catch (err) {
+    console.error('[web/hot]', err)
+    res.json({ success: true, result: [], totalPages: 1 })
+  }
+})
+
+app.get('/web/latest', async (req, res) => {
+  const page = parseInt(req.query.p) || 1
+  const cookie = verifySession(req) ? getStoredCookie() : null
+  const fwd = getForwardHeaders(req)
+  try {
+    const url = `https://www.v2ex.com/recent?p=${page}`
+    const { topics, totalPages } = await scrapeTopicList(url, cookie, fwd)
+    res.json({ success: true, result: topics, totalPages })
+  } catch (err) {
+    console.error('[web/latest]', err)
+    res.json({ success: true, result: [], totalPages: 1 })
+  }
+})
+
+app.get('/web/member/:username/topics', async (req, res) => {
+  const username = req.params.username
+  if (!username) {
+    return res.status(400).json({ error: '参数错误' })
+  }
+  const page = parseInt(req.query.p) || 1
+  const cookie = verifySession(req) ? getStoredCookie() : null
+  const fwd = getForwardHeaders(req)
+  try {
+    const url = `https://www.v2ex.com/member/${encodeURIComponent(username)}/topics?p=${page}`
+    const { topics, totalPages } = await scrapeTopicList(url, cookie, fwd)
+    res.json({ success: true, result: topics, totalPages })
+  } catch (err) {
+    console.error('[web/member/topics]', err)
     res.json({ success: true, result: [], totalPages: 1 })
   }
 })
