@@ -133,3 +133,10 @@
 .loginBtn:active {
   opacity: 0.8;
 }
+
+.noMore {
+  padding: 24px 20px;
+  text-align: center;
+  color: var(--text-tertiary);
+  font-size: 0.78rem;
+}

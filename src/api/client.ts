@@ -97,7 +97,7 @@ export const web = {
 
   notifications: (page = 1) =>
     fetch(`/web/notifications?p=${page}`, { credentials: 'same-origin' })
-      .then(r => r.json()) as Promise<{ success: boolean; result: V2Notification[]; totalPages: number }>,
+      .then(r => r.json()) as Promise<{ success: boolean; result: V2Notification[] }>,
 
   reply: (topicId: number, content: string) =>
     fetch('/web/reply', {

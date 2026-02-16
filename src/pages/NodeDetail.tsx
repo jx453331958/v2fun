@@ -5,27 +5,54 @@ import type { V2Topic, V2Node } from '../types'
 import Header from '../components/Header'
 import TopicCard from '../components/TopicCard'
 import Loading from '../components/Loading'
-import Pagination from '../components/Pagination'
 import PullToRefreshIndicator from '../components/PullToRefreshIndicator'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
+import { useInfiniteScroll } from '../hooks/useInfiniteScroll'
 import { sanitizeHtml } from '../utils/sanitize'
 import styles from './NodeDetail.module.css'
 
 export default function NodeDetail() {
   const { name } = useParams<{ name: string }>()
   const [node, setNode] = useState<V2Node | null>(null)
-  const [topics, setTopics] = useState<V2Topic[]>([])
-  const [page, setPage] = useState(1)
+  const [firstPageTopics, setFirstPageTopics] = useState<V2Topic[]>([])
   const [totalPages, setTotalPages] = useState(1)
   const [loading, setLoading] = useState(true)
 
-  const fetchTopics = useCallback(async (p: number) => {
+  const fetchPage = useCallback(
+    async (page: number) => {
+      if (!name) return []
+      try {
+        const res = await web.nodeTopics(name, page)
+        if (res.success) return res.result || []
+      } catch {
+        // web scraping pagination failed
+      }
+      return []
+    },
+    [name]
+  )
+
+  const { items: moreTopics, hasMore, isLoadingMore, sentinelRef, reset } =
+    useInfiniteScroll<V2Topic>({
+      fetchPage,
+      pageSize: 20,
+      enabled: !loading && totalPages > 1,
+      totalPages,
+    })
+
+  const fetchData = useCallback(async () => {
     if (!name) return
+    reset()
     setLoading(true)
     try {
-      const topicsRes = await web.nodeTopics(name, p)
+      // Fetch node info and first page of topics in parallel
+      const [nodeInfo, topicsRes] = await Promise.all([
+        v1.nodeInfo(name).catch(() => null),
+        web.nodeTopics(name, 1),
+      ])
+      if (nodeInfo) setNode(nodeInfo)
       if (topicsRes.success) {
-        setTopics(topicsRes.result || [])
+        setFirstPageTopics(topicsRes.result || [])
         setTotalPages(topicsRes.totalPages || 1)
       }
     } catch {
@@ -33,33 +60,19 @@ export default function NodeDetail() {
     } finally {
       setLoading(false)
     }
-  }, [name])
+  }, [name, reset])
 
   useEffect(() => {
-    if (!name) return
-    setPage(1)
-    setLoading(true)
-    // Fetch node info and first page of topics in parallel
-    Promise.all([
-      v1.nodeInfo(name).catch(() => null),
-      web.nodeTopics(name, 1),
-    ]).then(([nodeInfo, topicsRes]) => {
-      if (nodeInfo) setNode(nodeInfo)
-      if (topicsRes.success) {
-        setTopics(topicsRes.result || [])
-        setTotalPages(topicsRes.totalPages || 1)
-      }
-    }).finally(() => setLoading(false))
-  }, [name])
+    fetchData()
+  }, [fetchData])
 
-  const handlePageChange = (newPage: number) => {
-    setPage(newPage)
-    fetchTopics(newPage)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
+  const allTopics = [...firstPageTopics, ...moreTopics]
 
   const { pullDistance, status, pullStyle } = usePullToRefresh({
-    onRefresh: () => fetchTopics(page),
+    onRefresh: async () => {
+      reset()
+      await fetchData()
+    },
   })
 
   return (
@@ -80,15 +93,19 @@ export default function NodeDetail() {
               />
             )}
             <div className={styles.topicCount}>
-              {node?.topics ? `${node.topics} 个主题` : `${topics.length} 个主题`}
+              {node?.topics ? `${node.topics} 个主题` : `${allTopics.length} 个主题`}
             </div>
-            {topics.map((topic, i) => (
+            {allTopics.map((topic, i) => (
               <TopicCard key={topic.id} topic={topic} index={i} />
             ))}
-            {topics.length === 0 && (
+            <div ref={sentinelRef} />
+            {isLoadingMore && <Loading text="加载更多..." />}
+            {!hasMore && allTopics.length > 0 && (
+              <div className={styles.noMore}>没有更多了</div>
+            )}
+            {allTopics.length === 0 && (
               <div className={styles.empty}>该节点暂无主题</div>
             )}
-            <Pagination page={page} totalPages={totalPages} onPageChange={handlePageChange} />
           </>
         )}
       </div>

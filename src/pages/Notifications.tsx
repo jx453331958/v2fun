@@ -6,9 +6,9 @@ import { v1, web } from '../api/client'
 import { useAuth } from '../hooks/useAuth'
 import type { V2Notification } from '../types'
 import Loading from '../components/Loading'
-import Pagination from '../components/Pagination'
 import PullToRefreshIndicator from '../components/PullToRefreshIndicator'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
+import { useInfiniteScroll } from '../hooks/useInfiniteScroll'
 import { parseNotification, parseNotificationLink } from '../utils/parseNotification'
 import { fixAvatarUrl } from '../utils/fixAvatarUrl'
 import { sanitizeHtml } from '../utils/sanitize'
@@ -17,17 +17,15 @@ import styles from './Notifications.module.css'
 export default function Notifications() {
   const { isLoggedIn } = useAuth()
   const navigate = useNavigate()
-  const [notifications, setNotifications] = useState<V2Notification[]>([])
-  const [page, setPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
+  const [firstPageNotifications, setFirstPageNotifications] = useState<V2Notification[]>([])
   const [loading, setLoading] = useState(true)
   // V2 notification API only returns { username } in member — fetch avatars via V1 API
   const [avatarMap, setAvatarMap] = useState<Record<string, string>>({})
   const fetchedUsersRef = useRef<Set<string>>(new Set())
 
-  const fetchAvatars = useCallback(async (notifs: V2Notification[]) => {
+  const fetchAvatars = useCallback(async (notifications: V2Notification[]) => {
     const usernames = [...new Set(
-      notifs.map((n) => n.member?.username).filter((u): u is string => !!u)
+      notifications.map((n) => n.member?.username).filter((u): u is string => !!u)
     )]
     const missing = usernames.filter((u) => !fetchedUsersRef.current.has(u))
     if (missing.length === 0) return
@@ -53,15 +51,14 @@ export default function Notifications() {
     }
   }, [])
 
-  const fetchPage = useCallback(async (p: number) => {
+  const fetchFirstPage = useCallback(async () => {
     if (!isLoggedIn) return
     setLoading(true)
     try {
-      const res = await web.notifications(p)
+      const res = await web.notifications(1)
       if (res.success) {
         const list = res.result || []
-        setNotifications(list)
-        setTotalPages(res.totalPages || 1)
+        setFirstPageNotifications(list)
         fetchAvatars(list)
       }
     } catch {
@@ -76,16 +73,38 @@ export default function Notifications() {
       setLoading(false)
       return
     }
-    fetchPage(page)
-  }, [isLoggedIn, page, fetchPage])
+    fetchFirstPage()
+  }, [isLoggedIn, fetchFirstPage])
 
-  const handlePageChange = (newPage: number) => {
-    setPage(newPage)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
+  const fetchPage = useCallback(
+    async (page: number) => {
+      const res = await web.notifications(page)
+      if (res.success) return res.result || []
+      return []
+    },
+    []
+  )
+
+  const { items: moreNotifications, hasMore, isLoadingMore, sentinelRef, reset } =
+    useInfiniteScroll<V2Notification>({
+      fetchPage,
+      pageSize: 20,
+      enabled: isLoggedIn && !loading,
+    })
+
+  const allNotifications = [...firstPageNotifications, ...moreNotifications]
+
+  // Fetch avatars for newly loaded pages
+  useEffect(() => {
+    if (moreNotifications.length > 0) fetchAvatars(moreNotifications)
+  }, [moreNotifications, fetchAvatars])
 
   const { pullDistance, status, pullStyle } = usePullToRefresh({
-    onRefresh: () => fetchPage(page),
+    onRefresh: async () => {
+      reset()
+      fetchedUsersRef.current.clear()
+      await fetchFirstPage()
+    },
   })
 
   const navigateToTopic = useCallback((topicId: number, replyFloor?: number) => {
@@ -153,11 +172,11 @@ export default function Notifications() {
       <div style={pullStyle}>
         {loading && status === 'idle' ? (
           <Loading />
-        ) : notifications.length === 0 ? (
+        ) : allNotifications.length === 0 ? (
           <div className={styles.empty}>暂无通知</div>
         ) : (
           <div className={styles.list}>
-            {notifications.map((notif) => (
+            {allNotifications.map((notif) => (
               <div
                 key={notif.id}
                 className={styles.item}
@@ -202,9 +221,13 @@ export default function Notifications() {
                 </div>
               </div>
             ))}
+            <div ref={sentinelRef} />
+            {isLoadingMore && <Loading text="加载更多..." />}
+            {!hasMore && allNotifications.length > 0 && (
+              <div className={styles.noMore}>没有更多了</div>
+            )}
           </div>
         )}
-        <Pagination page={page} totalPages={totalPages} onPageChange={handlePageChange} />
       </div>
     </div>
   )
