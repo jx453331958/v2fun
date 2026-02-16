@@ -19,6 +19,7 @@ export default function MemberPage() {
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const prevUsernameRef = useRef(username)
 
   // Reset page to 1 when username changes
@@ -39,14 +40,17 @@ export default function MemberPage() {
   const fetchTopics = useCallback(async () => {
     if (!username) return
     setLoading(true)
+    setError('')
     try {
       const res = await web.memberTopics(username, page)
       if (res.success) {
         setTopics(res.result || [])
         setTotalPages(res.totalPages || 1)
+      } else {
+        setError('加载失败')
       }
     } catch {
-      // fetch failed
+      setError('网络错误，请重试')
     } finally {
       setLoading(false)
     }
@@ -121,15 +125,26 @@ export default function MemberPage() {
           主题
         </div>
 
-        {displayTopics.map((topic) => (
-          <TopicCard key={topic.id} topic={topic} />
-        ))}
+        {error ? (
+          <div className={styles.empty}>
+            <p>{error}</p>
+            <button onClick={fetchTopics} style={{ marginTop: 12, padding: '6px 20px', background: 'var(--accent)', color: 'var(--bg-primary)', borderRadius: 'var(--radius-lg)', fontSize: '0.85rem', fontWeight: 600 }}>
+              重试
+            </button>
+          </div>
+        ) : (
+          <>
+            {displayTopics.map((topic) => (
+              <TopicCard key={topic.id} topic={topic} />
+            ))}
 
-        {displayTopics.length === 0 && (
-          <div className={styles.empty}>暂无主题</div>
+            {displayTopics.length === 0 && (
+              <div className={styles.empty}>暂无主题</div>
+            )}
+
+            <Pagination page={page} totalPages={totalPages} onPageChange={handlePageChange} />
+          </>
         )}
-
-        <Pagination page={page} totalPages={totalPages} onPageChange={handlePageChange} />
       </div>
     </div>
   )

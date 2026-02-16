@@ -377,14 +377,20 @@ app.post('/auth/logout', (req, res) => {
 
 // ── Web operation proxy (reply / thank) ─────────────────────
 
-const webLimiter = rateLimit({
+const webReadLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 min
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: '请求过于频繁，请稍后重试' },
+})
+const webWriteLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 min
   max: 20,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: '操作过于频繁，请稍后重试' },
 })
-app.use('/web', webLimiter)
 
 /** Parse V2EX time string to Unix timestamp */
 function parseRelativeTime(text) {
@@ -780,7 +786,7 @@ async function scrapeNodeTopics(nodeName, page, cookie, fwd) {
   return scrapeTopicList(url, cookie, fwd)
 }
 
-app.get('/web/node/:nodeName', async (req, res) => {
+app.get('/web/node/:nodeName', webReadLimiter, async (req, res) => {
   const nodeName = req.params.nodeName
   if (!nodeName) {
     return res.status(400).json({ error: '参数错误' })
@@ -800,7 +806,7 @@ app.get('/web/node/:nodeName', async (req, res) => {
   }
 })
 
-app.get('/web/hot', async (req, res) => {
+app.get('/web/hot', webReadLimiter, async (req, res) => {
   const cookie = verifySession(req) ? getStoredCookie() : null
   const fwd = getForwardHeaders(req)
   try {
@@ -813,7 +819,7 @@ app.get('/web/hot', async (req, res) => {
   }
 })
 
-app.get('/web/latest', async (req, res) => {
+app.get('/web/latest', webReadLimiter, async (req, res) => {
   const page = parseInt(req.query.p) || 1
   const cookie = verifySession(req) ? getStoredCookie() : null
   const fwd = getForwardHeaders(req)
@@ -827,7 +833,7 @@ app.get('/web/latest', async (req, res) => {
   }
 })
 
-app.get('/web/member/:username/topics', async (req, res) => {
+app.get('/web/member/:username/topics', webReadLimiter, async (req, res) => {
   const username = req.params.username
   if (!username) {
     return res.status(400).json({ error: '参数错误' })
@@ -845,7 +851,7 @@ app.get('/web/member/:username/topics', async (req, res) => {
   }
 })
 
-app.get('/web/replies/:topicId', async (req, res) => {
+app.get('/web/replies/:topicId', webReadLimiter, async (req, res) => {
   const topicId = parseInt(req.params.topicId)
   if (!topicId || isNaN(topicId)) {
     return res.status(400).json({ error: '参数错误' })
@@ -887,7 +893,7 @@ app.get('/web/replies/:topicId', async (req, res) => {
   }
 })
 
-app.get('/web/notifications', async (req, res) => {
+app.get('/web/notifications', webReadLimiter, async (req, res) => {
   if (!verifySession(req)) return res.status(401).json({ error: '未登录' })
   const cookie = getStoredCookie()
   if (!cookie) return res.json({ success: true, result: [] })
@@ -903,7 +909,7 @@ app.get('/web/notifications', async (req, res) => {
   }
 })
 
-app.post('/web/reply', express.json({ limit: '16kb' }), async (req, res) => {
+app.post('/web/reply', webWriteLimiter, express.json({ limit: '16kb' }), async (req, res) => {
   if (!verifySession(req)) return res.status(401).json({ error: '未登录' })
   const cookie = getStoredCookie()
   if (!cookie) return res.json({ success: false, error: 'no_cookie' })
@@ -969,7 +975,7 @@ app.post('/web/reply', express.json({ limit: '16kb' }), async (req, res) => {
   }
 })
 
-app.post('/web/topic', express.json({ limit: '32kb' }), async (req, res) => {
+app.post('/web/topic', webWriteLimiter, express.json({ limit: '32kb' }), async (req, res) => {
   if (!verifySession(req)) return res.status(401).json({ error: '未登录' })
   const cookie = getStoredCookie()
   if (!cookie) return res.json({ success: false, error: 'no_cookie' })
@@ -1071,7 +1077,7 @@ app.post('/web/topic', express.json({ limit: '32kb' }), async (req, res) => {
   }
 })
 
-app.post('/web/thank/topic/:id', express.json({ limit: '1kb' }), async (req, res) => {
+app.post('/web/thank/topic/:id', webWriteLimiter, express.json({ limit: '1kb' }), async (req, res) => {
   if (!verifySession(req)) return res.status(401).json({ error: '未登录' })
   const cookie = getStoredCookie()
   if (!cookie) return res.json({ success: false, error: 'no_cookie' })
@@ -1103,7 +1109,7 @@ app.post('/web/thank/topic/:id', express.json({ limit: '1kb' }), async (req, res
   }
 })
 
-app.post('/web/thank/reply/:id', express.json({ limit: '1kb' }), async (req, res) => {
+app.post('/web/thank/reply/:id', webWriteLimiter, express.json({ limit: '1kb' }), async (req, res) => {
   if (!verifySession(req)) return res.status(401).json({ error: '未登录' })
   const cookie = getStoredCookie()
   if (!cookie) return res.json({ success: false, error: 'no_cookie' })

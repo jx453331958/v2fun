@@ -18,6 +18,7 @@ export default function NodeDetail() {
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const prevNameRef = useRef(name)
 
   // Reset page to 1 when node name changes
@@ -38,14 +39,17 @@ export default function NodeDetail() {
   const fetchTopics = useCallback(async () => {
     if (!name) return
     setLoading(true)
+    setError('')
     try {
       const res = await web.nodeTopics(name, page)
       if (res.success) {
         setTopics(res.result || [])
         setTotalPages(res.totalPages || 1)
+      } else {
+        setError('加载失败')
       }
     } catch {
-      // fetch failed
+      setError('网络错误，请重试')
     } finally {
       setLoading(false)
     }
@@ -73,6 +77,13 @@ export default function NodeDetail() {
       <div style={pullStyle}>
         {loading && status === 'idle' ? (
           <Loading />
+        ) : error ? (
+          <div className={styles.empty}>
+            <p>{error}</p>
+            <button onClick={fetchTopics} style={{ marginTop: 12, padding: '6px 20px', background: 'var(--accent)', color: 'var(--bg-primary)', borderRadius: 'var(--radius-lg)', fontSize: '0.85rem', fontWeight: 600 }}>
+              重试
+            </button>
+          </div>
         ) : (
           <>
             {node?.header?.replace(/<[^>]*>/g, '').trim() && (
