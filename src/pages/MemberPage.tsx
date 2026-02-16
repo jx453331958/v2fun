@@ -71,7 +71,12 @@ export default function MemberPage() {
     },
   })
 
-  const allTopics = [...firstPageTopics, ...moreTopics]
+  // Scraping /member/{username}/topics doesn't include avatars in topic entries,
+  // so fill them in from the member profile we already fetched via V1 API.
+  const memberAvatar = member?.avatar_large || member?.avatar || ''
+  const allTopics = [...firstPageTopics, ...moreTopics].map((t) =>
+    t.member.avatar ? t : { ...t, member: { ...t.member, avatar: memberAvatar, avatar_mini: memberAvatar, avatar_normal: memberAvatar, avatar_large: memberAvatar } }
+  )
 
   if (loading && status === 'idle') {
     return (
