@@ -7,7 +7,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     'Content-Type': 'application/json',
     ...(options?.headers as Record<string, string>),
   }
-  const res = await fetch(`${BASE}${path}`, { ...options, headers })
+  const res = await fetch(`${BASE}${path}`, { ...options, headers, cache: 'no-cache' })
   if (!res.ok) {
     throw new Error(res.status === 401 ? '认证失败，请重新登录' :
       res.status === 403 ? '无权限访问' :
