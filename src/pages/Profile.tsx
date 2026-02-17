@@ -108,6 +108,8 @@ export default function Profile() {
             退出登录
           </button>
         </div>
+
+        <p className={styles.version}>V2Fun · {__COMMIT_HASH__}</p>
       </div>
     </div>
   )

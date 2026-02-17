@@ -1,5 +1,8 @@
 FROM node:20-alpine AS builder
 
+ARG COMMIT_HASH=dev
+ENV COMMIT_HASH=${COMMIT_HASH}
+
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
