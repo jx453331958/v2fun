@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import { v1, web } from '../api/client'
 import type { V2Topic, V2Node } from '../types'
@@ -7,18 +7,35 @@ import TopicCard from '../components/TopicCard'
 import Loading from '../components/Loading'
 import PullToRefreshIndicator from '../components/PullToRefreshIndicator'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
-import { useInfiniteScroll } from '../hooks/useInfiniteScroll'
+import { useInfiniteScroll, type InfiniteScrollSnapshot } from '../hooks/useInfiniteScroll'
+import { useListCache } from '../hooks/useListCache'
 import { sanitizeHtml } from '../utils/sanitize'
 import styles from './NodeDetail.module.css'
 
+interface NodeDetailCache {
+  snapshot: InfiniteScrollSnapshot<V2Topic>
+  node: V2Node | null
+}
+
 export default function NodeDetail() {
   const { name } = useParams<{ name: string }>()
-  const [node, setNode] = useState<V2Node | null>(null)
+  const cacheKey = `/node/${name}`
+  const { save, restore } = useListCache<NodeDetailCache>(cacheKey)
+  const cached = useRef(restore()).current
+
+  const [node, setNode] = useState<V2Node | null>(cached?.data.node ?? null)
 
   useEffect(() => {
     if (!name) return
     v1.nodeInfo(name).then(setNode).catch(() => null)
   }, [name])
+
+  // Restore scroll position
+  useEffect(() => {
+    if (cached?.scrollY) {
+      requestAnimationFrame(() => window.scrollTo(0, cached.scrollY))
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchPage = useCallback(async (page: number) => {
     if (!name) return { items: [] as V2Topic[], hasMore: false }
@@ -44,11 +61,20 @@ export default function NodeDetail() {
     sentinelRef,
     reset,
     retry,
+    getSnapshot,
   } = useInfiniteScroll<V2Topic>({
     fetchPage,
     resetKey: name || '',
     getItemKey: (topic) => topic.id,
+    initialState: cached?.data.snapshot,
   })
+
+  // Save state on unmount
+  const nodeRef = useRef(node)
+  nodeRef.current = node
+  useEffect(() => {
+    return () => { save({ snapshot: getSnapshot(), node: nodeRef.current }) }
+  }, [save, getSnapshot])
 
   const { pullDistance, status, pullStyle } = usePullToRefresh({
     onRefresh: async () => { reset() },

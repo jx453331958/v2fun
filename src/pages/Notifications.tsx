@@ -9,21 +9,32 @@ import Loading from '../components/Loading'
 import Pagination from '../components/Pagination'
 import PullToRefreshIndicator from '../components/PullToRefreshIndicator'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
+import { useListCache } from '../hooks/useListCache'
 import { parseNotification, parseNotificationLink } from '../utils/parseNotification'
 import { fixAvatarUrl } from '../utils/fixAvatarUrl'
 import { sanitizeHtml } from '../utils/sanitize'
 import styles from './Notifications.module.css'
 
+interface NotificationsCache {
+  notifications: V2Notification[]
+  page: number
+  totalPages: number
+  avatarMap: Record<string, string>
+}
+
 export default function Notifications() {
   const { isLoggedIn } = useAuth()
   const navigate = useNavigate()
-  const [notifications, setNotifications] = useState<V2Notification[]>([])
-  const [page, setPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
-  const [loading, setLoading] = useState(true)
+  const { save, restore } = useListCache<NotificationsCache>('/notifications')
+  const cached = useRef(restore()).current
+
+  const [notifications, setNotifications] = useState<V2Notification[]>(cached?.data.notifications ?? [])
+  const [page, setPage] = useState(cached?.data.page ?? 1)
+  const [totalPages, setTotalPages] = useState(cached?.data.totalPages ?? 1)
+  const [loading, setLoading] = useState(!cached)
   // V2 notification API only returns { username } in member — fetch avatars via V1 API
-  const [avatarMap, setAvatarMap] = useState<Record<string, string>>({})
-  const fetchedUsersRef = useRef<Set<string>>(new Set())
+  const [avatarMap, setAvatarMap] = useState<Record<string, string>>(cached?.data.avatarMap ?? {})
+  const fetchedUsersRef = useRef<Set<string>>(new Set(Object.keys(cached?.data.avatarMap ?? {})))
 
   const fetchAvatars = useCallback(async (notifs: V2Notification[]) => {
     const usernames = [...new Set(
@@ -71,13 +82,33 @@ export default function Notifications() {
     }
   }, [isLoggedIn, fetchAvatars])
 
+  // Restore scroll position
+  useEffect(() => {
+    if (cached?.scrollY) {
+      requestAnimationFrame(() => window.scrollTo(0, cached.scrollY))
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fetch data (skip if restored from cache)
+  const skipInitialFetch = useRef(!!cached)
   useEffect(() => {
     if (!isLoggedIn) {
       setLoading(false)
       return
     }
+    if (skipInitialFetch.current) {
+      skipInitialFetch.current = false
+      return
+    }
     fetchPage(page)
   }, [isLoggedIn, page, fetchPage])
+
+  // Save state on unmount
+  const stateRef = useRef({ notifications, page, totalPages, avatarMap })
+  stateRef.current = { notifications, page, totalPages, avatarMap }
+  useEffect(() => {
+    return () => { save(stateRef.current) }
+  }, [save])
 
   const handlePageChange = (newPage: number) => {
     setPage(newPage)

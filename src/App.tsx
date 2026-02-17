@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Routes, Route, useLocation } from 'react-router-dom'
+import { Routes, Route, useLocation, useNavigationType } from 'react-router-dom'
 import Layout from './components/Layout'
 import Home from './pages/Home'
 import TopicDetail from './pages/TopicDetail'
@@ -13,9 +13,12 @@ import MemberPage from './pages/MemberPage'
 
 function ScrollToTop() {
   const { pathname } = useLocation()
+  const navType = useNavigationType()
   useEffect(() => {
-    window.scrollTo(0, 0)
-  }, [pathname])
+    if (navType !== 'POP') {
+      window.scrollTo(0, 0)
+    }
+  }, [pathname, navType])
   return null
 }
 

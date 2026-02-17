@@ -1,10 +1,17 @@
 import { useRef, useEffect, useCallback, useState } from 'react'
 
+export interface InfiniteScrollSnapshot<T> {
+  items: T[]
+  page: number
+  isExhausted: boolean
+}
+
 interface UseInfiniteScrollOptions<T> {
   fetchPage: (page: number) => Promise<{ items: T[]; hasMore: boolean }>
   resetKey: string
   rootMargin?: string
   getItemKey?: (item: T) => string | number
+  initialState?: InfiniteScrollSnapshot<T>
 }
 
 interface UseInfiniteScrollReturn<T> {
@@ -16,6 +23,7 @@ interface UseInfiniteScrollReturn<T> {
   sentinelRef: (node: HTMLElement | null) => void
   reset: () => void
   retry: () => void
+  getSnapshot: () => InfiniteScrollSnapshot<T>
 }
 
 export function useInfiniteScroll<T>({
@@ -23,16 +31,17 @@ export function useInfiniteScroll<T>({
   resetKey,
   rootMargin = '200px',
   getItemKey,
+  initialState,
 }: UseInfiniteScrollOptions<T>): UseInfiniteScrollReturn<T> {
-  const [items, setItems] = useState<T[]>([])
+  const [items, setItems] = useState<T[]>(initialState?.items ?? [])
   const [isLoading, setIsLoading] = useState(false)
-  const [isInitialLoading, setIsInitialLoading] = useState(true)
-  const [isExhausted, setIsExhausted] = useState(false)
+  const [isInitialLoading, setIsInitialLoading] = useState(!initialState)
+  const [isExhausted, setIsExhausted] = useState(initialState?.isExhausted ?? false)
   const [error, setError] = useState('')
 
   // Use refs for mutable state to avoid stale closures in observer
-  const pageRef = useRef(1)
-  const exhaustedRef = useRef(false)
+  const pageRef = useRef(initialState?.page ?? 1)
+  const exhaustedRef = useRef(initialState?.isExhausted ?? false)
   const errorRef = useRef('')
   const fetchingRef = useRef(false)
   const generationRef = useRef(0)
@@ -41,9 +50,12 @@ export function useInfiniteScroll<T>({
   const prevResetKeyRef = useRef(resetKey)
   const fetchPageRef = useRef(fetchPage)
   const getItemKeyRef = useRef(getItemKey)
+  const hadInitialStateRef = useRef(!!initialState)
+  const itemsRef = useRef(items)
 
   fetchPageRef.current = fetchPage
   getItemKeyRef.current = getItemKey
+  itemsRef.current = items
 
   const doFetch = useCallback((targetPage: number, isReset: boolean) => {
     if (fetchingRef.current) return
@@ -96,8 +108,12 @@ export function useInfiniteScroll<T>({
     }
   }, [resetKey, doFetch])
 
-  // Initial fetch
+  // Initial fetch (skip if restored from cache)
   useEffect(() => {
+    if (hadInitialStateRef.current) {
+      hadInitialStateRef.current = false
+      return
+    }
     doFetch(1, true)
   }, [doFetch])
 
@@ -152,6 +168,12 @@ export function useInfiniteScroll<T>({
     doFetch(pageRef.current + 1, false)
   }, [doFetch])
 
+  const getSnapshot = useCallback((): InfiniteScrollSnapshot<T> => ({
+    items: itemsRef.current,
+    page: pageRef.current,
+    isExhausted: exhaustedRef.current,
+  }), [])
+
   return {
     items,
     isLoading,
@@ -161,5 +183,6 @@ export function useInfiniteScroll<T>({
     sentinelRef,
     reset,
     retry,
+    getSnapshot,
   }
 }

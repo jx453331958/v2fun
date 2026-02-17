@@ -10,15 +10,27 @@ import Loading from '../components/Loading'
 import Pagination from '../components/Pagination'
 import PullToRefreshIndicator from '../components/PullToRefreshIndicator'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
+import { useListCache } from '../hooks/useListCache'
 import styles from './MemberPage.module.css'
+
+interface MemberPageCache {
+  member: V2Member | null
+  topics: V2Topic[]
+  page: number
+  totalPages: number
+}
 
 export default function MemberPage() {
   const { username } = useParams<{ username: string }>()
-  const [member, setMember] = useState<V2Member | null>(null)
-  const [topics, setTopics] = useState<V2Topic[]>([])
-  const [page, setPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
-  const [loading, setLoading] = useState(true)
+  const cacheKey = `/member/${username}`
+  const { save, restore } = useListCache<MemberPageCache>(cacheKey)
+  const cached = useRef(restore()).current
+
+  const [member, setMember] = useState<V2Member | null>(cached?.data.member ?? null)
+  const [topics, setTopics] = useState<V2Topic[]>(cached?.data.topics ?? [])
+  const [page, setPage] = useState(cached?.data.page ?? 1)
+  const [totalPages, setTotalPages] = useState(cached?.data.totalPages ?? 1)
+  const [loading, setLoading] = useState(!cached)
   const [error, setError] = useState('')
   const prevUsernameRef = useRef(username)
 
@@ -30,9 +42,21 @@ export default function MemberPage() {
     }
   }, [username])
 
-  // Fetch member info only once per username
+  // Restore scroll position
+  useEffect(() => {
+    if (cached?.scrollY) {
+      requestAnimationFrame(() => window.scrollTo(0, cached.scrollY))
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fetch member info only once per username (skip if cached)
+  const skipMemberFetch = useRef(!!cached?.data.member)
   useEffect(() => {
     if (!username) return
+    if (skipMemberFetch.current) {
+      skipMemberFetch.current = false
+      return
+    }
     v1.memberInfo(username).then(setMember).catch(() => null)
   }, [username])
 
@@ -56,9 +80,22 @@ export default function MemberPage() {
     }
   }, [username, page])
 
+  // Fetch topics (skip if restored from cache)
+  const skipTopicsFetch = useRef(!!cached)
   useEffect(() => {
+    if (skipTopicsFetch.current) {
+      skipTopicsFetch.current = false
+      return
+    }
     fetchTopics()
   }, [fetchTopics])
+
+  // Save state on unmount
+  const stateRef = useRef({ member, topics, page, totalPages })
+  stateRef.current = { member, topics, page, totalPages }
+  useEffect(() => {
+    return () => { save(stateRef.current) }
+  }, [save])
 
   const handlePageChange = (newPage: number) => {
     setPage(newPage)

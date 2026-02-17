@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { web } from '../api/client'
 import type { V2Topic } from '../types'
 import TopicCard from '../components/TopicCard'
@@ -6,20 +6,32 @@ import { TopicSkeleton } from '../components/Loading'
 import Pagination from '../components/Pagination'
 import PullToRefreshIndicator from '../components/PullToRefreshIndicator'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
+import { useListCache } from '../hooks/useListCache'
 import styles from './Home.module.css'
 
 type Tab = 'hot' | 'latest'
 
-// Persist tab selection across remounts (e.g. navigating to topic and back)
-let savedTab: Tab = 'latest'
+interface HomeCache {
+  tab: Tab
+  topics: V2Topic[]
+  page: number
+  totalPages: number
+}
 
 export default function Home() {
-  const [tab, setTab] = useState<Tab>(savedTab)
-  const [topics, setTopics] = useState<V2Topic[]>([])
-  const [page, setPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
-  const [loading, setLoading] = useState(true)
+  const { save, restore } = useListCache<HomeCache>('/')
+  const cached = useRef(restore()).current
+
+  const [tab, setTab] = useState<Tab>(cached?.data.tab ?? 'latest')
+  const [topics, setTopics] = useState<V2Topic[]>(cached?.data.topics ?? [])
+  const [page, setPage] = useState(cached?.data.page ?? 1)
+  const [totalPages, setTotalPages] = useState(cached?.data.totalPages ?? 1)
+  const [loading, setLoading] = useState(!cached)
   const [error, setError] = useState('')
+
+  // Refs for unmount save
+  const stateRef = useRef({ tab, topics, page, totalPages })
+  stateRef.current = { tab, topics, page, totalPages }
 
   const fetchData = useCallback(async (t: Tab, p: number) => {
     setLoading(true)
@@ -42,12 +54,29 @@ export default function Home() {
     }
   }, [])
 
+  // Restore scroll position on mount
   useEffect(() => {
+    if (cached?.scrollY) {
+      requestAnimationFrame(() => window.scrollTo(0, cached.scrollY))
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fetch data (skip if restored from cache)
+  const skipInitialFetch = useRef(!!cached)
+  useEffect(() => {
+    if (skipInitialFetch.current) {
+      skipInitialFetch.current = false
+      return
+    }
     fetchData(tab, page)
   }, [tab, page, fetchData])
 
+  // Save state on unmount
+  useEffect(() => {
+    return () => { save(stateRef.current) }
+  }, [save])
+
   const handleTabChange = (t: Tab) => {
-    savedTab = t
     setTab(t)
     setPage(1)
   }
