@@ -37,6 +37,13 @@
   margin-bottom: 4px;
 }
 
+.nameGroup {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  min-width: 0;
+}
+
 .username {
   font-size: 0.82rem;
   font-weight: 600;

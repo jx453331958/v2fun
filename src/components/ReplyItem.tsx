@@ -64,15 +64,17 @@ export default function ReplyItem({ reply, floor, topicId, highlight, hasCookie,
       </div>
       <div className={styles.body}>
         <div className={styles.header}>
-          <span
-            className={styles.username}
-            onClick={() => navigate(`/member/${reply.member.username}`)}
-          >
-            {reply.member.username}
+          <span className={styles.nameGroup}>
+            <span
+              className={styles.username}
+              onClick={() => navigate(`/member/${reply.member.username}`)}
+            >
+              {reply.member.username}
+            </span>
+            {opUsername && reply.member.username === opUsername && (
+              <span className={styles.opBadge}>OP</span>
+            )}
           </span>
-          {opUsername && reply.member.username === opUsername && (
-            <span className={styles.opBadge}>OP</span>
-          )}
           <span className={styles.meta}>
             {timeAgo}
             <span className={styles.floor}>#{floor}</span>
