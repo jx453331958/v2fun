@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react'
 import { web } from '../api/client'
 import type { V2Topic } from '../types'
 import TopicCard from '../components/TopicCard'
@@ -54,10 +54,10 @@ export default function Home() {
     }
   }, [])
 
-  // Restore scroll position on mount
-  useEffect(() => {
+  // Restore scroll position on mount (useLayoutEffect runs before paint)
+  useLayoutEffect(() => {
     if (cached?.scrollY) {
-      requestAnimationFrame(() => window.scrollTo(0, cached.scrollY))
+      window.scrollTo(0, cached.scrollY)
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 

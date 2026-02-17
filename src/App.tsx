@@ -15,6 +15,13 @@ function ScrollToTop() {
   const { pathname } = useLocation()
   const navType = useNavigationType()
   useEffect(() => {
+    // Disable browser's built-in scroll restoration to prevent it from
+    // racing with our manual scroll management on POP navigation.
+    if (window.history.scrollRestoration !== 'manual') {
+      window.history.scrollRestoration = 'manual'
+    }
+  }, [])
+  useEffect(() => {
     if (navType !== 'POP') {
       window.scrollTo(0, 0)
     }

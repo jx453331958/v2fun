@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { formatDistanceToNow } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
@@ -82,10 +82,10 @@ export default function Notifications() {
     }
   }, [isLoggedIn, fetchAvatars])
 
-  // Restore scroll position
-  useEffect(() => {
+  // Restore scroll position (useLayoutEffect runs before paint)
+  useLayoutEffect(() => {
     if (cached?.scrollY) {
-      requestAnimationFrame(() => window.scrollTo(0, cached.scrollY))
+      window.scrollTo(0, cached.scrollY)
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 

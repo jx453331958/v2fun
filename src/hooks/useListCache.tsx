@@ -1,4 +1,4 @@
-import { createContext, useContext, useCallback, useRef, type ReactNode } from 'react'
+import { createContext, useContext, useCallback, useEffect, useRef, type ReactNode } from 'react'
 
 interface CacheEntry {
   data: unknown
@@ -17,11 +17,19 @@ const ListCacheContext = createContext<ListCacheContextValue | null>(null)
 
 export function ListCacheProvider({ children }: { children: ReactNode }) {
   const cacheRef = useRef<Map<string, CacheEntry>>(new Map())
+  // Track scroll position continuously so we have the correct value
+  // even when save() runs after DOM has been replaced by the new route.
+  const scrollYRef = useRef(0)
+  useEffect(() => {
+    const onScroll = () => { scrollYRef.current = window.scrollY }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
 
   const save = useCallback((key: string, data: unknown) => {
     cacheRef.current.set(key, {
       data,
-      scrollY: window.scrollY,
+      scrollY: scrollYRef.current,
       timestamp: Date.now(),
     })
   }, [])

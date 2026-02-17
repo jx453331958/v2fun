@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useLayoutEffect, useState, useCallback, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import { v1, web } from '../api/client'
 import type { V2Topic, V2Node } from '../types'
@@ -30,10 +30,10 @@ export default function NodeDetail() {
     v1.nodeInfo(name).then(setNode).catch(() => null)
   }, [name])
 
-  // Restore scroll position
-  useEffect(() => {
+  // Restore scroll position (useLayoutEffect runs before paint)
+  useLayoutEffect(() => {
     if (cached?.scrollY) {
-      requestAnimationFrame(() => window.scrollTo(0, cached.scrollY))
+      window.scrollTo(0, cached.scrollY)
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 

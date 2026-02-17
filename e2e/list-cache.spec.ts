@@ -161,6 +161,37 @@ test.describe('List State Preservation', () => {
     await expect(page.locator('text="Page 1 Topic 1"')).toBeVisible()
   })
 
+  test('Scroll position is preserved on back navigation', async ({ page }) => {
+    await setupMockRoutes(page)
+    await page.goto('/')
+
+    // Wait for initial load
+    await page.waitForSelector('text="Page 1 Topic 1"', { timeout: 10000 })
+
+    // Scroll down to a known position
+    await page.evaluate(() => window.scrollTo(0, 500))
+    await page.waitForTimeout(100)
+    const scrollBefore = await page.evaluate(() => window.scrollY)
+    expect(scrollBefore).toBeGreaterThanOrEqual(400)
+
+    // Click a topic near the middle of the list
+    await page.locator('text="Page 1 Topic 5"').click()
+    await page.waitForURL(/\/topic\//, { timeout: 5000 })
+
+    // Go back
+    await page.goBack()
+    await page.waitForURL('/', { timeout: 5000 })
+
+    // Wait for cached content to render and layout effects to complete
+    await page.waitForSelector('text="Page 1 Topic 5"', { timeout: 5000 })
+    await page.waitForTimeout(100)
+
+    // Verify scroll position is restored (allow small tolerance)
+    const scrollAfter = await page.evaluate(() => window.scrollY)
+    expect(scrollAfter).toBeGreaterThanOrEqual(scrollBefore - 50)
+    expect(scrollAfter).toBeLessThanOrEqual(scrollBefore + 50)
+  })
+
   test('Home page tab state is preserved on back navigation', async ({ page }) => {
     await setupMockRoutes(page)
     await page.goto('/')
