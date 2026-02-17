@@ -44,6 +44,16 @@
   cursor: pointer;
 }
 
+.opBadge {
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-light);
+  padding: 0 4px;
+  border-radius: 3px;
+  line-height: 1.4;
+}
+
 .meta {
   font-size: 0.68rem;
   color: var(--text-tertiary);

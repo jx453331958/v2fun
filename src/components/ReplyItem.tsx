@@ -13,10 +13,11 @@ interface Props {
   topicId: number
   highlight?: boolean
   hasCookie?: boolean
+  opUsername?: string
   onReplyTo?: (username: string, floor: number) => void
 }
 
-export default function ReplyItem({ reply, floor, topicId, highlight, hasCookie, onReplyTo }: Props) {
+export default function ReplyItem({ reply, floor, topicId, highlight, hasCookie, opUsername, onReplyTo }: Props) {
   const navigate = useNavigate()
   const [thanked, setThanked] = useState(reply.thanked)
   const [thanks, setThanks] = useState(reply.thanks)
@@ -69,6 +70,9 @@ export default function ReplyItem({ reply, floor, topicId, highlight, hasCookie,
           >
             {reply.member.username}
           </span>
+          {opUsername && reply.member.username === opUsername && (
+            <span className={styles.opBadge}>OP</span>
+          )}
           <span className={styles.meta}>
             {timeAgo}
             <span className={styles.floor}>#{floor}</span>

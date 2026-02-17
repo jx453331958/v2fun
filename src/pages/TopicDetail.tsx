@@ -249,6 +249,7 @@ export default function TopicDetail() {
                   topicId={parseInt(id!)}
                   highlight={highlightFloor === (page - 1) * PAGE_SIZE + i + 1}
                   hasCookie={isLoggedIn}
+                  opUsername={topic.member?.username}
                   onReplyTo={isLoggedIn ? handleReplyTo : undefined}
                 />
               ))}
