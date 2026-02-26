@@ -30,9 +30,10 @@ export default function NodeDetail() {
     v1.nodeInfo(name).then(setNode).catch(() => null)
   }, [name])
 
-  // Restore scroll position (useLayoutEffect runs before paint)
+  // Restore scroll position (useLayoutEffect runs before paint).
+  // Always restore when cached (even scrollY=0) to override the detail page's position.
   useLayoutEffect(() => {
-    if (cached?.scrollY) {
+    if (cached) {
       window.scrollTo(0, cached.scrollY)
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -69,10 +70,11 @@ export default function NodeDetail() {
     initialState: cached?.data.snapshot,
   })
 
-  // Save state on unmount
+  // Save state on unmount — useLayoutEffect cleanup runs synchronously
+  // before the browser dispatches scroll events from DOM changes.
   const nodeRef = useRef(node)
   nodeRef.current = node
-  useEffect(() => {
+  useLayoutEffect(() => {
     return () => { save({ snapshot: getSnapshot(), node: nodeRef.current }) }
   }, [save, getSnapshot])
 

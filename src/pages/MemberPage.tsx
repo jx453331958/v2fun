@@ -42,9 +42,10 @@ export default function MemberPage() {
     }
   }, [username])
 
-  // Restore scroll position (useLayoutEffect runs before paint)
+  // Restore scroll position (useLayoutEffect runs before paint).
+  // Always restore when cached (even scrollY=0) to override the detail page's position.
   useLayoutEffect(() => {
-    if (cached?.scrollY) {
+    if (cached) {
       window.scrollTo(0, cached.scrollY)
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -90,10 +91,11 @@ export default function MemberPage() {
     fetchTopics()
   }, [fetchTopics])
 
-  // Save state on unmount
+  // Save state on unmount — useLayoutEffect cleanup runs synchronously
+  // before the browser dispatches scroll events from DOM changes.
   const stateRef = useRef({ member, topics, page, totalPages })
   stateRef.current = { member, topics, page, totalPages }
-  useEffect(() => {
+  useLayoutEffect(() => {
     return () => { save(stateRef.current) }
   }, [save])
 

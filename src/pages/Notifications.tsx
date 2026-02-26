@@ -82,9 +82,10 @@ export default function Notifications() {
     }
   }, [isLoggedIn, fetchAvatars])
 
-  // Restore scroll position (useLayoutEffect runs before paint)
+  // Restore scroll position (useLayoutEffect runs before paint).
+  // Always restore when cached (even scrollY=0) to override the detail page's position.
   useLayoutEffect(() => {
-    if (cached?.scrollY) {
+    if (cached) {
       window.scrollTo(0, cached.scrollY)
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -103,10 +104,11 @@ export default function Notifications() {
     fetchPage(page)
   }, [isLoggedIn, page, fetchPage])
 
-  // Save state on unmount
+  // Save state on unmount — useLayoutEffect cleanup runs synchronously
+  // before the browser dispatches scroll events from DOM changes.
   const stateRef = useRef({ notifications, page, totalPages, avatarMap })
   stateRef.current = { notifications, page, totalPages, avatarMap }
-  useEffect(() => {
+  useLayoutEffect(() => {
     return () => { save(stateRef.current) }
   }, [save])
 
