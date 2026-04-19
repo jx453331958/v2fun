@@ -1,14 +1,16 @@
 import { useEffect, useLayoutEffect, useState, useCallback, useRef } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
 import { v1, web } from '../api/client'
 import type { V2Topic, V2Node } from '../types'
 import Header from '../components/Header'
 import TopicCard from '../components/TopicCard'
 import Loading from '../components/Loading'
 import PullToRefreshIndicator from '../components/PullToRefreshIndicator'
+import TopicDetail from './TopicDetail'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { useInfiniteScroll, type InfiniteScrollSnapshot } from '../hooks/useInfiniteScroll'
 import { useListCache } from '../hooks/useListCache'
+import { useIsDesktop } from '../hooks/useIsDesktop'
 import { sanitizeHtml } from '../utils/sanitize'
 import styles from './NodeDetail.module.css'
 
@@ -22,16 +24,25 @@ export default function NodeDetail() {
   const cacheKey = `/node/${name}`
   const { save, restore } = useListCache<NodeDetailCache>(cacheKey)
   const cached = useRef(restore()).current
+  const isDesktop = useIsDesktop()
+  const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
 
   const [node, setNode] = useState<V2Node | null>(cached?.data.node ?? null)
+
+  const selectedTopicId = (() => {
+    const v = searchParams.get('t')
+    if (!v) return null
+    const n = parseInt(v)
+    return isNaN(n) ? null : n
+  })()
 
   useEffect(() => {
     if (!name) return
     v1.nodeInfo(name).then(setNode).catch(() => null)
   }, [name])
 
-  // Restore scroll position (useLayoutEffect runs before paint).
-  // Always restore when cached (even scrollY=0) to override the detail page's position.
+  // Restore scroll position
   useLayoutEffect(() => {
     if (cached) {
       window.scrollTo(0, cached.scrollY)
@@ -43,8 +54,6 @@ export default function NodeDetail() {
     const res = await web.nodeTopics(name, page)
     if (!res.success) throw new Error('加载失败')
     const items = res.result || []
-    // V2EX shows 20 topics per page. If totalPages is unavailable (parsed as 1),
-    // fall back to checking if a full page of items was returned.
     const hasMoreByPage = page < (res.totalPages || 1)
     const hasMoreByCount = items.length >= 20
     return {
@@ -70,8 +79,7 @@ export default function NodeDetail() {
     initialState: cached?.data.snapshot,
   })
 
-  // Save state on unmount — useLayoutEffect cleanup runs synchronously
-  // before the browser dispatches scroll events from DOM changes.
+  // Save state on unmount
   const nodeRef = useRef(node)
   nodeRef.current = node
   useLayoutEffect(() => {
@@ -82,13 +90,21 @@ export default function NodeDetail() {
     onRefresh: async () => { reset() },
   })
 
-  return (
-    <div className={styles.page}>
+  const handleSelectTopic = useCallback((topicId: number) => {
+    if (isDesktop) {
+      setSearchParams({ t: String(topicId) }, { replace: false })
+    } else {
+      navigate(`/topic/${topicId}`)
+    }
+  }, [isDesktop, navigate, setSearchParams])
+
+  const listSection = (
+    <>
       <Header title={node?.title || name || '节点'} showBack />
 
-      <PullToRefreshIndicator pullDistance={pullDistance} status={status} />
+      {!isDesktop && <PullToRefreshIndicator pullDistance={pullDistance} status={status} />}
 
-      <div style={pullStyle}>
+      <div style={isDesktop ? undefined : pullStyle}>
         {isInitialLoading && status === 'idle' ? (
           <Loading />
         ) : error && topics.length === 0 ? (
@@ -122,7 +138,13 @@ export default function NodeDetail() {
             </div>
 
             {topics.map((topic, i) => (
-              <TopicCard key={topic.id} topic={topic} index={i} />
+              <TopicCard
+                key={topic.id}
+                topic={topic}
+                index={i}
+                onSelect={isDesktop ? handleSelectTopic : undefined}
+                selected={isDesktop && selectedTopicId === topic.id}
+              />
             ))}
 
             {topics.length === 0 && !isLoading && (
@@ -165,6 +187,25 @@ export default function NodeDetail() {
           </>
         )}
       </div>
-    </div>
+    </>
   )
+
+  if (isDesktop) {
+    return (
+      <div className={styles.splitPage}>
+        <div className={styles.listColumn}>{listSection}</div>
+        <div className={styles.detailColumn}>
+          {selectedTopicId ? (
+            <TopicDetail key={selectedTopicId} topicId={selectedTopicId} embedded />
+          ) : (
+            <div className={styles.detailEmpty}>
+              <p>选择左侧话题查看详情</p>
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  return <div className={styles.page}>{listSection}</div>
 }

@@ -1,13 +1,15 @@
 import { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { formatDistanceToNow } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
 import { v1, web } from '../api/client'
 import { useAuth } from '../hooks/useAuth'
+import { useIsDesktop } from '../hooks/useIsDesktop'
 import type { V2Notification } from '../types'
 import Loading from '../components/Loading'
 import Pagination from '../components/Pagination'
 import PullToRefreshIndicator from '../components/PullToRefreshIndicator'
+import TopicDetail from './TopicDetail'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { useListCache } from '../hooks/useListCache'
 import { parseNotification, parseNotificationLink } from '../utils/parseNotification'
@@ -25,6 +27,8 @@ interface NotificationsCache {
 export default function Notifications() {
   const { isLoggedIn } = useAuth()
   const navigate = useNavigate()
+  const isDesktop = useIsDesktop()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { save, restore } = useListCache<NotificationsCache>('/notifications')
   const cached = useRef(restore()).current
 
@@ -32,9 +36,21 @@ export default function Notifications() {
   const [page, setPage] = useState(cached?.data.page ?? 1)
   const [totalPages, setTotalPages] = useState(cached?.data.totalPages ?? 1)
   const [loading, setLoading] = useState(!cached)
-  // V2 notification API only returns { username } in member — fetch avatars via V1 API
   const [avatarMap, setAvatarMap] = useState<Record<string, string>>(cached?.data.avatarMap ?? {})
   const fetchedUsersRef = useRef<Set<string>>(new Set(Object.keys(cached?.data.avatarMap ?? {})))
+
+  const selectedTopicId = (() => {
+    const v = searchParams.get('t')
+    if (!v) return null
+    const n = parseInt(v)
+    return isNaN(n) ? null : n
+  })()
+  const selectedFloor = (() => {
+    const v = searchParams.get('f')
+    if (!v) return undefined
+    const n = parseInt(v)
+    return isNaN(n) ? undefined : n
+  })()
 
   const fetchAvatars = useCallback(async (notifs: V2Notification[]) => {
     const usernames = [...new Set(
@@ -43,7 +59,6 @@ export default function Notifications() {
     const missing = usernames.filter((u) => !fetchedUsersRef.current.has(u))
     if (missing.length === 0) return
 
-    // Mark as fetched immediately to avoid duplicate requests
     for (const u of missing) fetchedUsersRef.current.add(u)
 
     const results = await Promise.allSettled(
@@ -82,8 +97,7 @@ export default function Notifications() {
     }
   }, [isLoggedIn, fetchAvatars])
 
-  // Restore scroll position (useLayoutEffect runs before paint).
-  // Always restore when cached (even scrollY=0) to override the detail page's position.
+  // Restore scroll position
   useLayoutEffect(() => {
     if (cached) {
       window.scrollTo(0, cached.scrollY)
@@ -104,8 +118,7 @@ export default function Notifications() {
     fetchPage(page)
   }, [isLoggedIn, page, fetchPage])
 
-  // Save state on unmount — useLayoutEffect cleanup runs synchronously
-  // before the browser dispatches scroll events from DOM changes.
+  // Save state on unmount
   const stateRef = useRef({ notifications, page, totalPages, avatarMap })
   stateRef.current = { notifications, page, totalPages, avatarMap }
   useLayoutEffect(() => {
@@ -122,13 +135,18 @@ export default function Notifications() {
   })
 
   const navigateToTopic = useCallback((topicId: number, replyFloor?: number) => {
-    navigate(`/topic/${topicId}`, {
-      state: replyFloor ? { scrollToFloor: replyFloor } : undefined,
-    })
-  }, [navigate])
+    if (isDesktop) {
+      const params: Record<string, string> = { t: String(topicId) }
+      if (replyFloor) params.f = String(replyFloor)
+      setSearchParams(params, { replace: false })
+    } else {
+      navigate(`/topic/${topicId}`, {
+        state: replyFloor ? { scrollToFloor: replyFloor } : undefined,
+      })
+    }
+  }, [isDesktop, navigate, setSearchParams])
 
   const handleItemClick = (notif: V2Notification, e: React.MouseEvent) => {
-    // Check if clicked on a topic link inside the notification HTML
     const target = e.target as HTMLElement
     const anchor = target.closest('a')
     if (anchor) {
@@ -141,7 +159,6 @@ export default function Notifications() {
       }
     }
 
-    // Navigate to the topic referenced in this notification
     const parsed = parseNotification(notif.text || '')
     if (parsed) {
       navigateToTopic(parsed.topicId, parsed.replyFloor)
@@ -172,70 +189,98 @@ export default function Notifications() {
     )
   }
 
-  return (
-    <div className={styles.page}>
+  const listSection = (
+    <>
       <div className={styles.header}>
         <h1 className={styles.title}>通知</h1>
       </div>
 
-      <PullToRefreshIndicator pullDistance={pullDistance} status={status} />
+      {!isDesktop && <PullToRefreshIndicator pullDistance={pullDistance} status={status} />}
 
-      <div style={pullStyle}>
+      <div style={isDesktop ? undefined : pullStyle}>
         {loading && status === 'idle' ? (
           <Loading />
         ) : notifications.length === 0 ? (
           <div className={styles.empty}>暂无通知</div>
         ) : (
           <div className={styles.list}>
-            {notifications.map((notif) => (
-              <div
-                key={notif.id}
-                className={styles.item}
-                onClick={(e) => handleItemClick(notif, e)}
-              >
-                {notif.member && (
-                  <div
-                    className={styles.itemAvatar}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      navigate(`/member/${notif.member.username}`)
-                    }}
-                  >
-                    {getAvatar(notif) ? (
-                      <img src={getAvatar(notif)} alt={notif.member.username} />
-                    ) : (
-                      <span className={styles.avatarPlaceholder}>
-                        {notif.member.username.charAt(0).toUpperCase()}
+            {notifications.map((notif) => {
+              const parsed = parseNotification(notif.text || '')
+              const isSelected = isDesktop && parsed?.topicId === selectedTopicId
+              return (
+                <div
+                  key={notif.id}
+                  className={`${styles.item} ${isSelected ? styles.itemSelected : ''}`}
+                  onClick={(e) => handleItemClick(notif, e)}
+                >
+                  {notif.member && (
+                    <div
+                      className={styles.itemAvatar}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        navigate(`/member/${notif.member.username}`)
+                      }}
+                    >
+                      {getAvatar(notif) ? (
+                        <img src={getAvatar(notif)} alt={notif.member.username} />
+                      ) : (
+                        <span className={styles.avatarPlaceholder}>
+                          {notif.member.username.charAt(0).toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  <div className={styles.itemBody}>
+                    <div className={styles.itemHeader}>
+                      <span
+                        className={styles.itemText}
+                        dangerouslySetInnerHTML={{ __html: sanitizeHtml(notif.text) }}
+                      />
+                      <span className={styles.itemTime}>
+                        {formatDistanceToNow(new Date(notif.created * 1000), {
+                          locale: zhCN,
+                          addSuffix: true,
+                        })}
                       </span>
+                    </div>
+                    {notif.payload_rendered && (
+                      <div
+                        className={styles.itemPayload}
+                        dangerouslySetInnerHTML={{ __html: sanitizeHtml(notif.payload_rendered) }}
+                      />
                     )}
                   </div>
-                )}
-                <div className={styles.itemBody}>
-                  <div className={styles.itemHeader}>
-                    <span
-                      className={styles.itemText}
-                      dangerouslySetInnerHTML={{ __html: sanitizeHtml(notif.text) }}
-                    />
-                    <span className={styles.itemTime}>
-                      {formatDistanceToNow(new Date(notif.created * 1000), {
-                        locale: zhCN,
-                        addSuffix: true,
-                      })}
-                    </span>
-                  </div>
-                  {notif.payload_rendered && (
-                    <div
-                      className={styles.itemPayload}
-                      dangerouslySetInnerHTML={{ __html: sanitizeHtml(notif.payload_rendered) }}
-                    />
-                  )}
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
         <Pagination page={page} totalPages={totalPages} onPageChange={handlePageChange} />
       </div>
-    </div>
+    </>
   )
+
+  if (isDesktop) {
+    return (
+      <div className={styles.splitPage}>
+        <div className={styles.listColumn}>{listSection}</div>
+        <div className={styles.detailColumn}>
+          {selectedTopicId ? (
+            <TopicDetail
+              key={`${selectedTopicId}-${selectedFloor || 0}`}
+              topicId={selectedTopicId}
+              initialFloor={selectedFloor}
+              embedded
+            />
+          ) : (
+            <div className={styles.detailEmpty}>
+              <p>选择左侧通知查看详情</p>
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  return <div className={styles.page}>{listSection}</div>
 }

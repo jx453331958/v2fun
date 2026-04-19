@@ -16,10 +16,24 @@ import styles from './TopicDetail.module.css'
 
 const PAGE_SIZE = 100
 
-export default function TopicDetail() {
-  const { id } = useParams<{ id: string }>()
+interface Props {
+  /** When provided, runs in embedded mode (e.g. desktop right-pane). */
+  topicId?: number
+  /** Optional initial floor to scroll into view after load. */
+  initialFloor?: number
+  /** Embedded mode: omit Header back button, don't use fixed reply bar. */
+  embedded?: boolean
+}
+
+export default function TopicDetail({ topicId: propTopicId, initialFloor, embedded = false }: Props = {}) {
+  const params = useParams<{ id: string }>()
   const location = useLocation()
   const { isLoggedIn } = useAuth()
+
+  const idStr = propTopicId != null ? String(propTopicId) : params.id
+  const id = idStr ? parseInt(idStr) : NaN
+  const scrollToFloor = initialFloor ?? (location.state as { scrollToFloor?: number } | null)?.scrollToFloor
+
   const [topic, setTopic] = useState<V2Topic | null>(null)
   const [replies, setReplies] = useState<V2Reply[]>([])
   const [page, setPage] = useState(1)
@@ -32,15 +46,22 @@ export default function TopicDetail() {
   const [thankingTopic, setThankingTopic] = useState(false)
   const [replyError, setReplyError] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const initializedRef = useRef(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const initializedForRef = useRef<number | null>(null)
 
-  const scrollToFloor = (location.state as { scrollToFloor?: number } | null)?.scrollToFloor
+  const scrollToTop = useCallback(() => {
+    if (embedded && containerRef.current) {
+      containerRef.current.scrollTo({ top: 0, behavior: 'smooth' })
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }, [embedded])
 
   const fetchReplies = useCallback(async (p: number) => {
     if (!id) return
     setLoading(true)
     try {
-      const data = await web.replies(parseInt(id), p)
+      const data = await web.replies(id, p)
       setReplies(data.result)
       setTotalPages(data.totalPages)
     } finally {
@@ -48,19 +69,27 @@ export default function TopicDetail() {
     }
   }, [id])
 
-  // Initial load — if scrollToFloor is set, jump to that page directly
+  // Initial load — re-runs when id changes (embedded mode swaps topics).
   useEffect(() => {
-    if (!id || initializedRef.current) return
-    initializedRef.current = true
+    if (!id || isNaN(id)) return
+    if (initializedForRef.current === id) return
+    initializedForRef.current = id
+
+    // Reset state when switching topics
+    setTopic(null)
+    setReplies([])
+    setHighlightFloor(null)
+    setReplyContent('')
+    setReplyError('')
+    setThankedTopic(false)
 
     const initialPage = scrollToFloor ? Math.ceil(scrollToFloor / PAGE_SIZE) : 1
     setPage(initialPage)
 
-    const topicId = parseInt(id)
     setLoading(true)
     Promise.all([
-      v1.topicById(topicId).then((arr) => arr[0]),
-      web.replies(topicId, initialPage),
+      v1.topicById(id).then((arr) => arr[0]),
+      web.replies(id, initialPage),
     ]).then(([t, repliesData]) => {
       setTopic(t)
       setReplies(repliesData.result)
@@ -76,12 +105,13 @@ export default function TopicDetail() {
         scrollToElement(scrollToFloor)
       })
     })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scrollToFloor, loading, topic])
 
   const handlePageChange = (newPage: number) => {
     setPage(newPage)
     fetchReplies(newPage)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    scrollToTop()
   }
 
   const scrollToElement = (floor: number) => {
@@ -99,7 +129,7 @@ export default function TopicDetail() {
 
   const openInV2EX = () => {
     if (!id) return
-    window.open(getTopicWebUrl(parseInt(id)), '_blank')
+    window.open(getTopicWebUrl(id), '_blank')
   }
 
   const handleSubmitReply = async () => {
@@ -107,16 +137,15 @@ export default function TopicDetail() {
     setSubmitting(true)
     setReplyError('')
     try {
-      const res = await web.reply(parseInt(id), replyContent.trim())
+      const res = await web.reply(id, replyContent.trim())
       if (res.success) {
         setReplyContent('')
         textareaRef.current?.blur()
         if (textareaRef.current) textareaRef.current.style.height = 'auto'
         // Jump to the last page to see the new reply
-        const topicId = parseInt(id)
-        const data = await web.replies(topicId, totalPages)
+        const data = await web.replies(id, totalPages)
         if (data.totalPages > totalPages) {
-          const lastData = await web.replies(topicId, data.totalPages)
+          const lastData = await web.replies(id, data.totalPages)
           setTotalPages(lastData.totalPages)
           setPage(lastData.totalPages)
           setReplies(lastData.result)
@@ -126,7 +155,11 @@ export default function TopicDetail() {
           setReplies(data.result)
         }
         requestAnimationFrame(() => {
-          window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })
+          if (embedded && containerRef.current) {
+            containerRef.current.scrollTo({ top: containerRef.current.scrollHeight, behavior: 'smooth' })
+          } else {
+            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })
+          }
         })
       } else if (res.error === 'cookie_expired') {
         setReplyError('Cookie 已过期，请在个人页重新设置')
@@ -148,7 +181,7 @@ export default function TopicDetail() {
     }
     setThankingTopic(true)
     try {
-      const res = await web.thankTopic(parseInt(id))
+      const res = await web.thankTopic(id)
       if (res.success) {
         setThankedTopic(true)
       } else if (res.error === 'cookie_expired') {
@@ -164,10 +197,12 @@ export default function TopicDetail() {
     textareaRef.current?.focus()
   }, [])
 
+  const pageClass = embedded ? `${styles.page} ${styles.embedded}` : styles.page
+
   if (loading && status === 'idle') {
     return (
-      <div className={styles.page}>
-        <Header title="主题详情" showBack />
+      <div className={pageClass} ref={containerRef}>
+        {!embedded && <Header title="主题详情" showBack />}
         <Loading />
       </div>
     )
@@ -175,8 +210,8 @@ export default function TopicDetail() {
 
   if (!topic) {
     return (
-      <div className={styles.page}>
-        <Header title="主题详情" showBack />
+      <div className={pageClass} ref={containerRef}>
+        {!embedded && <Header title="主题详情" showBack />}
         <div className={styles.empty}>主题不存在</div>
       </div>
     )
@@ -188,12 +223,12 @@ export default function TopicDetail() {
   })
 
   return (
-    <div className={styles.page}>
-      <Header title={topic.node?.title || '主题详情'} showBack />
+    <div className={pageClass} ref={containerRef}>
+      {!embedded && <Header title={topic.node?.title || '主题详情'} showBack />}
 
-      <PullToRefreshIndicator pullDistance={pullDistance} status={status} />
+      {!embedded && <PullToRefreshIndicator pullDistance={pullDistance} status={status} />}
 
-      <div style={pullStyle}>
+      <div style={embedded ? undefined : pullStyle}>
         <article className={styles.topic}>
           {topic.member && (
             <div className={styles.topicMeta}>
@@ -207,6 +242,19 @@ export default function TopicDetail() {
                 <span className={styles.username}>{topic.member.username}</span>
                 <span className={styles.time}>{timeAgo}</span>
               </div>
+              {embedded && (
+                <button
+                  className={styles.openExternal}
+                  onClick={openInV2EX}
+                  title="在 V2EX 打开"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" />
+                    <polyline points="15 3 21 3 21 9" />
+                    <line x1="10" y1="14" x2="21" y2="3" />
+                  </svg>
+                </button>
+              )}
             </div>
           )}
 
@@ -246,7 +294,7 @@ export default function TopicDetail() {
                   key={reply.id}
                   reply={reply}
                   floor={(page - 1) * PAGE_SIZE + i + 1}
-                  topicId={parseInt(id!)}
+                  topicId={id}
                   highlight={highlightFloor === (page - 1) * PAGE_SIZE + i + 1}
                   hasCookie={isLoggedIn}
                   opUsername={topic.member?.username}

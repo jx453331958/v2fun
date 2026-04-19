@@ -7,19 +7,31 @@ import styles from './TopicCard.module.css'
 interface Props {
   topic: V2Topic
   index?: number
+  /** When provided, called instead of navigating to /topic/:id (e.g. desktop master-detail). */
+  onSelect?: (topicId: number) => void
+  /** Visually mark this card as currently selected in the detail pane. */
+  selected?: boolean
 }
 
-export default function TopicCard({ topic }: Props) {
+export default function TopicCard({ topic, onSelect, selected }: Props) {
   const navigate = useNavigate()
   const timeAgo = formatDistanceToNow(new Date(topic.created * 1000), {
     locale: zhCN,
     addSuffix: true,
   })
 
+  const handleClick = () => {
+    if (onSelect) {
+      onSelect(topic.id)
+    } else {
+      navigate(`/topic/${topic.id}`)
+    }
+  }
+
   return (
     <article
-      className={styles.card}
-      onClick={() => navigate(`/topic/${topic.id}`)}
+      className={`${styles.card} ${selected ? styles.selected : ''}`}
+      onClick={handleClick}
     >
       <div className={styles.meta}>
         {topic.member && (

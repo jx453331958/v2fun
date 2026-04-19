@@ -1,12 +1,15 @@
 import { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { web } from '../api/client'
 import type { V2Topic } from '../types'
 import TopicCard from '../components/TopicCard'
 import { TopicSkeleton } from '../components/Loading'
 import Pagination from '../components/Pagination'
 import PullToRefreshIndicator from '../components/PullToRefreshIndicator'
+import TopicDetail from './TopicDetail'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { useListCache } from '../hooks/useListCache'
+import { useIsDesktop } from '../hooks/useIsDesktop'
 import styles from './Home.module.css'
 
 type Tab = 'hot' | 'latest'
@@ -21,6 +24,9 @@ interface HomeCache {
 export default function Home() {
   const { save, restore } = useListCache<HomeCache>('/')
   const cached = useRef(restore()).current
+  const isDesktop = useIsDesktop()
+  const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
 
   const [tab, setTab] = useState<Tab>(cached?.data.tab ?? 'latest')
   const [topics, setTopics] = useState<V2Topic[]>(cached?.data.topics ?? [])
@@ -28,6 +34,13 @@ export default function Home() {
   const [totalPages, setTotalPages] = useState(cached?.data.totalPages ?? 1)
   const [loading, setLoading] = useState(!cached)
   const [error, setError] = useState('')
+
+  const selectedTopicId = (() => {
+    const v = searchParams.get('t')
+    if (!v) return null
+    const n = parseInt(v)
+    return isNaN(n) ? null : n
+  })()
 
   // Refs for unmount save
   const stateRef = useRef({ tab, topics, page, totalPages })
@@ -55,7 +68,6 @@ export default function Home() {
   }, [])
 
   // Restore scroll position on mount (useLayoutEffect runs before paint).
-  // Always restore when cached (even scrollY=0) to override the detail page's position.
   useLayoutEffect(() => {
     if (cached) {
       window.scrollTo(0, cached.scrollY)
@@ -72,9 +84,7 @@ export default function Home() {
     fetchData(tab, page)
   }, [tab, page, fetchData])
 
-  // Save state on unmount — useLayoutEffect cleanup runs synchronously
-  // before the browser dispatches scroll events from DOM changes,
-  // ensuring scrollYRef still holds the correct value.
+  // Save state on unmount
   useLayoutEffect(() => {
     return () => { save(stateRef.current) }
   }, [save])
@@ -89,12 +99,20 @@ export default function Home() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
+  const handleSelectTopic = useCallback((topicId: number) => {
+    if (isDesktop) {
+      setSearchParams({ t: String(topicId) }, { replace: false })
+    } else {
+      navigate(`/topic/${topicId}`)
+    }
+  }, [isDesktop, navigate, setSearchParams])
+
   const { pullDistance, status, pullStyle } = usePullToRefresh({
     onRefresh: () => fetchData(tab, page),
   })
 
-  return (
-    <div className={styles.page}>
+  const listSection = (
+    <>
       <header className={styles.header}>
         <span className={styles.logo}>V2Fun</span>
         <div className={styles.tabs}>
@@ -117,9 +135,9 @@ export default function Home() {
         </div>
       </header>
 
-      <PullToRefreshIndicator pullDistance={pullDistance} status={status} />
+      {!isDesktop && <PullToRefreshIndicator pullDistance={pullDistance} status={status} />}
 
-      <div style={pullStyle}>
+      <div style={isDesktop ? undefined : pullStyle}>
         {loading && status === 'idle' ? (
           <TopicSkeleton />
         ) : error ? (
@@ -132,7 +150,12 @@ export default function Home() {
         ) : (
           <div>
             {topics.map((topic) => (
-              <TopicCard key={topic.id} topic={topic} />
+              <TopicCard
+                key={topic.id}
+                topic={topic}
+                onSelect={isDesktop ? handleSelectTopic : undefined}
+                selected={isDesktop && selectedTopicId === topic.id}
+              />
             ))}
             {topics.length === 0 && (
               <div className={styles.empty}>暂无主题</div>
@@ -141,6 +164,29 @@ export default function Home() {
           </div>
         )}
       </div>
-    </div>
+    </>
   )
+
+  if (isDesktop) {
+    return (
+      <div className={styles.splitPage}>
+        <div className={styles.listColumn}>{listSection}</div>
+        <div className={styles.detailColumn}>
+          {selectedTopicId ? (
+            <TopicDetail key={selectedTopicId} topicId={selectedTopicId} embedded />
+          ) : (
+            <div className={styles.detailEmpty}>
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+              </svg>
+              <p>选择左侧话题查看详情</p>
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  return <div className={styles.page}>{listSection}</div>
 }

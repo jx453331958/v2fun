@@ -27,3 +27,36 @@
   color: var(--text-tertiary);
   font-size: 0.88rem;
 }
+
+/* ================================================================
+   Desktop master-detail layout
+   ================================================================ */
+.splitPage {
+  display: grid;
+  grid-template-columns: var(--desktop-list-width) 1fr;
+  height: 100dvh;
+  min-height: 0;
+}
+
+.listColumn {
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.detailColumn {
+  min-width: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.detailEmpty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+  font-size: 0.92rem;
+  padding: 32px;
+}

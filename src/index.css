@@ -65,6 +65,11 @@
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --max-app-width: 640px;
+
+  /* Desktop layout (>= 960px) */
+  --sidebar-width: 220px;
+  --desktop-list-width: 440px;
+  --max-desktop-width: 1400px;
 }
 
 * {
@@ -113,10 +118,16 @@ body::before {
   margin: 0 auto;
 }
 
-@media (min-width: 641px) {
+@media (min-width: 641px) and (max-width: 959.98px) {
   #root {
     border-left: 1px solid var(--border);
     border-right: 1px solid var(--border);
+  }
+}
+
+@media (min-width: 960px) {
+  #root {
+    max-width: var(--max-desktop-width);
   }
 }
 

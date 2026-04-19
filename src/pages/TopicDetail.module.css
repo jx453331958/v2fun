@@ -3,6 +3,49 @@
   background: var(--bg-primary);
 }
 
+/* Embedded mode (desktop right pane): own scroll container, no fixed reply bar. */
+.embedded {
+  position: relative;
+  height: 100dvh;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.embedded .repliesSection {
+  padding-bottom: 0;
+  margin-top: 0;
+}
+
+.embedded .replyBar {
+  position: sticky;
+  bottom: 0;
+  left: auto;
+  right: auto;
+  transform: none;
+  width: 100%;
+  max-width: none;
+  margin-top: auto;
+}
+
+.openExternal {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  color: var(--text-tertiary);
+  transition: background 0.15s, color 0.15s;
+}
+
+.openExternal:hover {
+  background: var(--bg-tertiary);
+  color: var(--accent);
+}
+
 .topic {
   background: var(--bg-secondary);
   padding: 18px 16px;
