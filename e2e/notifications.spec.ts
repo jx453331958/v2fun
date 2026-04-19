@@ -12,15 +12,18 @@ const MOCK_MEMBER_SELF = {
   created: 1600000000,
 }
 
+// V2EX's notification `text` field contains rendered HTML (not plain text) —
+// that's what gets parsed for topic ID and what the click handler renders via
+// dangerouslySetInnerHTML.
 const MOCK_NOTIFICATIONS = [
   {
     id: 100,
     member_id: 2,
     for_member_id: 1,
-    text: 'replyer 在 测试话题标题 里回复了你',
-    payload: '',
-    payload_rendered:
+    text:
       '<a href="/member/replyer">replyer</a> 在 <a href="/t/999888#reply5">测试话题标题</a> 里回复了你',
+    payload: '',
+    payload_rendered: '',
     created: Math.floor(Date.now() / 1000) - 60,
     member: { username: 'replyer' },
   },
@@ -28,10 +31,10 @@ const MOCK_NOTIFICATIONS = [
     id: 101,
     member_id: 3,
     for_member_id: 1,
-    text: 'anotheruser 在回复 另一个话题 时提到了你',
-    payload: '',
-    payload_rendered:
+    text:
       '<a href="/member/anotheruser">anotheruser</a> 在回复 <a href="/t/888777#reply12">另一个话题</a> 时提到了你',
+    payload: '',
+    payload_rendered: '',
     created: Math.floor(Date.now() / 1000) - 3600,
     member: { username: 'anotheruser' },
   },
@@ -42,10 +45,10 @@ const MOCK_NOTIFICATIONS_ABSOLUTE_URL = [
     id: 200,
     member_id: 2,
     for_member_id: 1,
-    text: 'replyer 在 测试话题 里回复了你',
-    payload: '',
-    payload_rendered:
+    text:
       '<a href="https://www.v2ex.com/member/replyer">replyer</a> 在 <a href="https://www.v2ex.com/t/999888#reply5">测试话题</a> 里回复了你',
+    payload: '',
+    payload_rendered: '',
     created: Math.floor(Date.now() / 1000) - 60,
     member: { username: 'replyer' },
   },
@@ -84,39 +87,33 @@ const MEMBER_INFO_ANOTHER = {
 }
 
 function setupMockRoutes(page: import('@playwright/test').Page, notifications = MOCK_NOTIFICATIONS) {
-  // Log all intercepted requests for debugging
-  page.on('request', (req) => {
-    if (req.url().includes('/members/show.json')) {
-      console.log(`[REQ] ${req.url()}`)
-    }
-  })
-
+  // Bypass passcode gate.
+  page.route('**/auth/passcode-status', (route) =>
+    route.fulfill({ json: { verified: true } })
+  )
+  // Restore logged-in session with MOCK_MEMBER_SELF (useAuth expects { member }).
   page.route('**/auth/session', (route) =>
-    route.fulfill({ json: { token: 'fake-token-for-test' } })
+    route.fulfill({ json: { member: MOCK_MEMBER_SELF } })
   )
-  page.route('**/api/v2/member', (route) =>
-    route.fulfill({ json: { success: true, result: MOCK_MEMBER_SELF } })
+  // Notifications — app calls backend-scraped /web/notifications endpoint that returns JSON.
+  page.route('**/web/notifications*', (route) =>
+    route.fulfill({ json: { success: true, result: notifications, totalPages: 1 } })
   )
-  page.route('**/api/v2/notifications*', (route) =>
-    route.fulfill({ json: { success: true, result: notifications } })
-  )
+  // Topic + replies for navigated-to topic 999888.
   page.route('**/api/topics/show.json*id=999888*', (route) =>
     route.fulfill({ json: [MOCK_TOPIC] })
   )
-  page.route('**/api/replies/show.json*', (route) => {
+  page.route('**/web/replies/*', (route) => {
     const replies = Array.from({ length: 10 }, (_, i) => ({
       id: 5000 + i, content: `Reply ${i + 1}`, content_rendered: `<p>Reply ${i + 1}</p>`,
       member: { id: 100 + i, username: `user${i}`, avatar: 'https://cdn.v2ex.com/avatar/default.png' },
       created: 1600000000 + i * 60, topic_id: 999888, thanked: false, thanks: 0,
     }))
-    route.fulfill({ json: replies })
+    route.fulfill({ json: { success: true, result: replies, totalPages: 1 } })
   })
-  page.route('**/api/topics/hot.json', (route) => route.fulfill({ json: [] }))
-  page.route('**/api/topics/latest.json', (route) => route.fulfill({ json: [] }))
-  // V1 member info — provides avatars for notification senders
+  // V1 member info — used to backfill avatars when notification payload lacks one.
   page.route('**/api/members/show.json*', (route) => {
     const url = route.request().url()
-    console.log(`[ROUTE HIT] members/show.json: ${url}`)
     if (url.includes('replyer')) {
       route.fulfill({ json: MEMBER_INFO_REPLYER })
     } else if (url.includes('anotheruser')) {
@@ -128,8 +125,9 @@ function setupMockRoutes(page: import('@playwright/test').Page, notifications = 
 }
 
 async function loginAndGoToNotifications(page: import('@playwright/test').Page) {
+  // Seed the cookie storage key the current auth flow uses.
   await page.goto('/')
-  await page.evaluate(() => localStorage.setItem('v2fun_token', 'fake-token-for-test'))
+  await page.evaluate(() => localStorage.setItem('v2fun_cookie', 'fake-cookie-for-test'))
   await page.goto('/notifications')
   await page.waitForSelector('[class*="itemText"]', { timeout: 5000 })
 }
@@ -139,34 +137,21 @@ test.describe('Notifications Page', () => {
     await setupMockRoutes(page)
     await loginAndGoToNotifications(page)
 
-    // Dump initial HTML
-    const firstItem = page.locator('[class*="list"] > div').first()
-    const html = await firstItem.innerHTML()
-    console.log(`Initial HTML: ${html}`)
-
-    // Check for placeholders (shown while avatars are loading)
     const placeholders = page.locator('span[class*="avatarPlaceholder"]')
-    const imgs = page.locator('[class*="itemAvatar"] img')
-    const placeholderCount = await placeholders.count()
-    const imgCount = await imgs.count()
-    console.log(`Placeholders: ${placeholderCount}, Images: ${imgCount}`)
 
     // Wait for avatars to load from V1 API
     try {
       await page.waitForSelector('[class*="itemAvatar"] img', { timeout: 8000 })
       const loadedImgs = page.locator('[class*="itemAvatar"] img')
       const loadedCount = await loadedImgs.count()
-      console.log(`Loaded avatar images: ${loadedCount}`)
       for (let i = 0; i < loadedCount; i++) {
         const src = await loadedImgs.nth(i).getAttribute('src')
-        console.log(`Avatar ${i} src: "${src}"`)
         expect(src).toBeTruthy()
         expect(src).toContain('v2ex.com')
       }
     } catch {
       // If images didn't load, at least placeholders should exist
       const finalPlaceholders = await placeholders.count()
-      console.log(`Final placeholders: ${finalPlaceholders}`)
       expect(finalPlaceholders, 'Should show either images or placeholders').toBeGreaterThan(0)
     }
   })
@@ -189,7 +174,6 @@ test.describe('Notifications Page', () => {
     await setupMockRoutes(page, MOCK_NOTIFICATIONS_ABSOLUTE_URL)
     await loginAndGoToNotifications(page)
     const link = page.locator('[class*="itemText"] a[href*="/t/"]').first()
-    console.log(`Absolute URL href: ${await link.getAttribute('href')}`)
     await link.click()
     await expect(page).toHaveURL(/\/topic\/999888/, { timeout: 5000 })
   })
