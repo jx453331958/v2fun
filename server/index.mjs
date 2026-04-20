@@ -123,7 +123,7 @@ function setSessionCookie(res, value, maxAge = 365 * 24 * 3600) {
 }
 
 // ── Auth data helpers ────────────────────────────────────
-// AUTH_FILE stores: { session, cookie (encrypted base64), member }
+// AUTH_FILE stores: { session (legacy, unused since multi-device fix), cookie (encrypted base64), member }
 
 function readAuthData() {
   try {
@@ -138,19 +138,17 @@ function writeAuthData(data) {
   fs.writeFileSync(AUTH_FILE, JSON.stringify(data), { encoding: 'utf-8', mode: 0o600 })
 }
 
-/** Verify session cookie and return true if valid */
+/** True iff this passcode-verified request is allowed to use the stored V2EX cookie.
+ *
+ * Passcode is the real access gate (enforced by middleware before this runs), and
+ * the app stores exactly one V2EX cookie. So any passcode-verified caller IS the
+ * cookie owner — no per-device session token to invalidate when another device
+ * logs in. The legacy `data.session` field is still written for backwards-compat
+ * but is no longer checked. */
 function verifySession(req) {
-  const sessionToken = parseCookie(req.headers.cookie, 'v2fun_session')
-  if (!sessionToken) return false
-  try {
-    const data = readAuthData()
-    if (!data) return false
-    const expected = Buffer.from(data.session, 'utf-8')
-    const actual = Buffer.from(hmac(sessionToken), 'utf-8')
-    return expected.length === actual.length && crypto.timingSafeEqual(expected, actual)
-  } catch {
-    return false
-  }
+  if (!verifyPasscodeCookie(req)) return false
+  const data = readAuthData()
+  return !!(data && data.cookie)
 }
 
 /** Get decrypted V2EX cookie from AUTH_FILE */
