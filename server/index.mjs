@@ -826,7 +826,7 @@ app.get('/web/node/:nodeName', webReadLimiter, async (req, res) => {
     res.json({ success: true, result: topics, totalPages })
   } catch (err) {
     console.error('[web/node]', err)
-    res.status(502).json({ success: false, error: 'upstream_unavailable', message: '上游请求失败，请稍后重试' })
+    res.json({ success: false, error: 'upstream_unavailable', message: '上游请求失败，请稍后重试' })
   }
 })
 
@@ -839,7 +839,7 @@ app.get('/web/hot', webReadLimiter, async (req, res) => {
     res.json({ success: true, result: topics, totalPages })
   } catch (err) {
     console.error('[web/hot]', err)
-    res.status(502).json({ success: false, error: 'upstream_unavailable', message: '上游请求失败，请稍后重试' })
+    res.json({ success: false, error: 'upstream_unavailable', message: '上游请求失败，请稍后重试' })
   }
 })
 
@@ -853,7 +853,7 @@ app.get('/web/latest', webReadLimiter, async (req, res) => {
     res.json({ success: true, result: topics, totalPages })
   } catch (err) {
     console.error('[web/latest]', err)
-    res.status(502).json({ success: false, error: 'upstream_unavailable', message: '上游请求失败，请稍后重试' })
+    res.json({ success: false, error: 'upstream_unavailable', message: '上游请求失败，请稍后重试' })
   }
 })
 
@@ -871,7 +871,7 @@ app.get('/web/member/:username/topics', webReadLimiter, async (req, res) => {
     res.json({ success: true, result: topics, totalPages })
   } catch (err) {
     console.error('[web/member/topics]', err)
-    res.status(502).json({ success: false, error: 'upstream_unavailable', message: '上游请求失败，请稍后重试' })
+    res.json({ success: false, error: 'upstream_unavailable', message: '上游请求失败，请稍后重试' })
   }
 })
 
@@ -913,7 +913,7 @@ app.get('/web/replies/:topicId', webReadLimiter, async (req, res) => {
     res.json({ success: true, result: replies, totalPages })
   } catch (err) {
     console.error('[web/replies]', err)
-    res.status(502).json({ success: false, error: 'upstream_unavailable', message: '上游请求失败，请稍后重试' })
+    res.json({ success: false, error: 'upstream_unavailable', message: '上游请求失败，请稍后重试' })
   }
 })
 
@@ -929,7 +929,7 @@ app.get('/web/notifications', webReadLimiter, async (req, res) => {
     res.json({ success: true, result: notifications, totalPages })
   } catch (err) {
     console.error('[web/notifications]', err)
-    res.status(502).json({ success: false, error: 'upstream_unavailable', message: '上游请求失败，请稍后重试' })
+    res.json({ success: false, error: 'upstream_unavailable', message: '上游请求失败，请稍后重试' })
   }
 })
 

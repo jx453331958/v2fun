@@ -74,30 +74,43 @@ interface WebResult {
   topicId?: number
 }
 
+// Parse a JSON response defensively. Reverse proxies (Cloudflare, etc.) may
+// replace 5xx bodies with text/plain error pages, and WebKit's r.json() throws
+// an opaque "The string did not match the expected pattern." SyntaxError on
+// non-JSON input. Normalize to {success:false} so callers can render a retry UI.
+async function readJsonOrFail<T>(res: Response): Promise<T> {
+  const text = await res.text()
+  try {
+    return JSON.parse(text) as T
+  } catch {
+    return { success: false, error: 'bad_response', message: res.ok ? '响应解析失败' : `上游异常 (${res.status})` } as T
+  }
+}
+
 export const web = {
   nodeTopics: (nodeName: string, page = 1) =>
     fetch(`/web/node/${encodeURIComponent(nodeName)}?p=${page}`, { credentials: 'same-origin' })
-      .then(r => r.json()) as Promise<{ success: boolean; result: V2Topic[]; totalPages: number }>,
+      .then(readJsonOrFail) as Promise<{ success: boolean; result: V2Topic[]; totalPages: number }>,
 
   hotTopics: (page = 1) =>
     fetch(`/web/hot?p=${page}`, { credentials: 'same-origin' })
-      .then(r => r.json()) as Promise<{ success: boolean; result: V2Topic[]; totalPages: number }>,
+      .then(readJsonOrFail) as Promise<{ success: boolean; result: V2Topic[]; totalPages: number }>,
 
   latestTopics: (page = 1) =>
     fetch(`/web/latest?p=${page}`, { credentials: 'same-origin' })
-      .then(r => r.json()) as Promise<{ success: boolean; result: V2Topic[]; totalPages: number }>,
+      .then(readJsonOrFail) as Promise<{ success: boolean; result: V2Topic[]; totalPages: number }>,
 
   memberTopics: (username: string, page = 1) =>
     fetch(`/web/member/${encodeURIComponent(username)}/topics?p=${page}`, { credentials: 'same-origin' })
-      .then(r => r.json()) as Promise<{ success: boolean; result: V2Topic[]; totalPages: number }>,
+      .then(readJsonOrFail) as Promise<{ success: boolean; result: V2Topic[]; totalPages: number }>,
 
   replies: (topicId: number, page = 1) =>
     fetch(`/web/replies/${topicId}?p=${page}`, { credentials: 'same-origin' })
-      .then(r => r.json()) as Promise<{ success: boolean; result: V2Reply[]; totalPages: number }>,
+      .then(readJsonOrFail) as Promise<{ success: boolean; result: V2Reply[]; totalPages: number }>,
 
   notifications: (page = 1) =>
     fetch(`/web/notifications?p=${page}`, { credentials: 'same-origin' })
-      .then(r => r.json()) as Promise<{ success: boolean; result: V2Notification[]; totalPages: number }>,
+      .then(readJsonOrFail) as Promise<{ success: boolean; result: V2Notification[]; totalPages: number }>,
 
   reply: (topicId: number, content: string) =>
     fetch('/web/reply', {
