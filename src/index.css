@@ -83,6 +83,7 @@ html {
   font-size: 16px;
   -webkit-text-size-adjust: 100%;
   background: var(--bg-primary);
+  scrollbar-gutter: stable;
 }
 
 body {
