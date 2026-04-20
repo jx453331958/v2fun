@@ -38,6 +38,7 @@ export default function Notifications() {
   const [loading, setLoading] = useState(!cached)
   const [avatarMap, setAvatarMap] = useState<Record<string, string>>(cached?.data.avatarMap ?? {})
   const fetchedUsersRef = useRef<Set<string>>(new Set(Object.keys(cached?.data.avatarMap ?? {})))
+  const listColumnRef = useRef<HTMLDivElement>(null)
 
   const selectedTopicId = (() => {
     const v = searchParams.get('t')
@@ -127,7 +128,11 @@ export default function Notifications() {
 
   const handlePageChange = (newPage: number) => {
     setPage(newPage)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    if (isDesktop && listColumnRef.current) {
+      listColumnRef.current.scrollTo({ top: 0, behavior: 'smooth' })
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
   }
 
   const { pullDistance, status, pullStyle } = usePullToRefresh({
@@ -263,7 +268,7 @@ export default function Notifications() {
   if (isDesktop) {
     return (
       <div className={styles.splitPage}>
-        <div className={styles.listColumn}>{listSection}</div>
+        <div ref={listColumnRef} className={styles.listColumn}>{listSection}</div>
         <div className={styles.detailColumn}>
           {selectedTopicId ? (
             <TopicDetail

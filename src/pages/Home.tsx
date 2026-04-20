@@ -46,6 +46,8 @@ export default function Home() {
   const stateRef = useRef({ tab, topics, page, totalPages })
   stateRef.current = { tab, topics, page, totalPages }
 
+  const listColumnRef = useRef<HTMLDivElement>(null)
+
   const fetchData = useCallback(async (t: Tab, p: number) => {
     setLoading(true)
     setError('')
@@ -96,7 +98,11 @@ export default function Home() {
 
   const handlePageChange = (newPage: number) => {
     setPage(newPage)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    if (isDesktop && listColumnRef.current) {
+      listColumnRef.current.scrollTo({ top: 0, behavior: 'smooth' })
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
   }
 
   const handleSelectTopic = useCallback((topicId: number) => {
@@ -170,7 +176,7 @@ export default function Home() {
   if (isDesktop) {
     return (
       <div className={styles.splitPage}>
-        <div className={styles.listColumn}>{listSection}</div>
+        <div ref={listColumnRef} className={styles.listColumn}>{listSection}</div>
         <div className={styles.detailColumn}>
           {selectedTopicId ? (
             <TopicDetail key={selectedTopicId} topicId={selectedTopicId} embedded />
