@@ -11,6 +11,12 @@
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+  align-items: center;
+}
+
+.embedded > * {
+  width: 100%;
+  max-width: var(--desktop-content-max);
 }
 
 .embedded .repliesSection {
@@ -25,7 +31,7 @@
   right: auto;
   transform: none;
   width: 100%;
-  max-width: none;
+  max-width: var(--desktop-content-max);
   margin-top: auto;
 }
 

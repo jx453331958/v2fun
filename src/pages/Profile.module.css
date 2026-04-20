@@ -3,6 +3,13 @@
   background: var(--bg-primary);
 }
 
+@media (min-width: 960px) {
+  .page {
+    max-width: var(--desktop-content-max);
+    margin: 0 auto;
+  }
+}
+
 .header {
   position: relative;
   overflow: hidden;

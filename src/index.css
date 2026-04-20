@@ -68,8 +68,8 @@
 
   /* Desktop layout (>= 960px) */
   --sidebar-width: 220px;
-  --desktop-list-width: 440px;
-  --max-desktop-width: 1400px;
+  --desktop-list-width: clamp(420px, 30vw, 560px);
+  --desktop-content-max: 920px;
 }
 
 * {
@@ -128,7 +128,7 @@ body::before {
 
 @media (min-width: 960px) {
   #root {
-    max-width: var(--max-desktop-width);
+    max-width: none;
   }
 }
 
