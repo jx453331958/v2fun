@@ -59,8 +59,12 @@ export default function Home() {
         setTopics(res.result || [])
         setTotalPages(res.totalPages || 1)
       } else {
-        setTopics([])
-        setTotalPages(1)
+        // Keep previous topics/totalPages so the user can retry or go back.
+        // Resetting here would hide the pagination and strand the user on a dead page.
+        const msg = (res as { message?: string; error?: string }).message
+          || (res as { error?: string }).error
+          || '加载失败'
+        setError(msg)
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : '加载失败')
@@ -76,8 +80,8 @@ export default function Home() {
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Fetch data (skip if restored from cache)
-  const skipInitialFetch = useRef(!!cached)
+  // Fetch data (skip if restored from a healthy cache; refetch if cache is empty/stale)
+  const skipInitialFetch = useRef(!!cached && (cached.data.topics?.length ?? 0) > 0)
   useEffect(() => {
     if (skipInitialFetch.current) {
       skipInitialFetch.current = false
@@ -86,9 +90,14 @@ export default function Home() {
     fetchData(tab, page)
   }, [tab, page, fetchData])
 
-  // Save state on unmount
+  // Save state on unmount — but never persist an empty/error snapshot.
+  // Caching a broken state would restore the dead page on next visit.
   useLayoutEffect(() => {
-    return () => { save(stateRef.current) }
+    return () => {
+      if (stateRef.current.topics.length > 0) {
+        save(stateRef.current)
+      }
+    }
   }, [save])
 
   const handleTabChange = (t: Tab) => {
@@ -144,9 +153,9 @@ export default function Home() {
       {!isDesktop && <PullToRefreshIndicator pullDistance={pullDistance} status={status} />}
 
       <div style={isDesktop ? undefined : pullStyle}>
-        {loading && status === 'idle' ? (
+        {loading && status === 'idle' && topics.length === 0 ? (
           <TopicSkeleton />
-        ) : error ? (
+        ) : error && topics.length === 0 ? (
           <div className={styles.error}>
             <p>{error}</p>
             <button className={styles.retryBtn} onClick={() => fetchData(tab, page)}>
@@ -155,6 +164,14 @@ export default function Home() {
           </div>
         ) : (
           <div>
+            {error && (
+              <div className={styles.error}>
+                <p>{error}</p>
+                <button className={styles.retryBtn} onClick={() => fetchData(tab, page)}>
+                  重试
+                </button>
+              </div>
+            )}
             {topics.map((topic) => (
               <TopicCard
                 key={topic.id}
@@ -163,7 +180,7 @@ export default function Home() {
                 selected={isDesktop && selectedTopicId === topic.id}
               />
             ))}
-            {topics.length === 0 && (
+            {topics.length === 0 && !error && (
               <div className={styles.empty}>暂无主题</div>
             )}
             <Pagination page={page} totalPages={totalPages} onPageChange={handlePageChange} />

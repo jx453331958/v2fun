@@ -52,7 +52,12 @@ export default function NodeDetail() {
   const fetchPage = useCallback(async (page: number) => {
     if (!name) return { items: [] as V2Topic[], hasMore: false }
     const res = await web.nodeTopics(name, page)
-    if (!res.success) throw new Error('加载失败')
+    if (!res.success) {
+      const msg = (res as { message?: string; error?: string }).message
+        || (res as { error?: string }).error
+        || '加载失败'
+      throw new Error(msg)
+    }
     const items = res.result || []
     const hasMoreByPage = page < (res.totalPages || 1)
     const hasMoreByCount = items.length >= 20
@@ -79,11 +84,17 @@ export default function NodeDetail() {
     initialState: cached?.data.snapshot,
   })
 
-  // Save state on unmount
+  // Save state on unmount — skip empty snapshots so a failed fetch doesn't
+  // persist a dead state that gets restored next visit.
   const nodeRef = useRef(node)
   nodeRef.current = node
   useLayoutEffect(() => {
-    return () => { save({ snapshot: getSnapshot(), node: nodeRef.current }) }
+    return () => {
+      const snapshot = getSnapshot()
+      if (snapshot.items.length > 0) {
+        save({ snapshot, node: nodeRef.current })
+      }
+    }
   }, [save, getSnapshot])
 
   const { pullDistance, status, pullStyle } = usePullToRefresh({

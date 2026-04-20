@@ -36,6 +36,7 @@ export default function Notifications() {
   const [page, setPage] = useState(cached?.data.page ?? 1)
   const [totalPages, setTotalPages] = useState(cached?.data.totalPages ?? 1)
   const [loading, setLoading] = useState(!cached)
+  const [error, setError] = useState('')
   const [avatarMap, setAvatarMap] = useState<Record<string, string>>(cached?.data.avatarMap ?? {})
   const fetchedUsersRef = useRef<Set<string>>(new Set(Object.keys(cached?.data.avatarMap ?? {})))
   const listColumnRef = useRef<HTMLDivElement>(null)
@@ -83,6 +84,7 @@ export default function Notifications() {
   const fetchPage = useCallback(async (p: number) => {
     if (!isLoggedIn) return
     setLoading(true)
+    setError('')
     try {
       const res = await web.notifications(p)
       if (res.success) {
@@ -90,9 +92,15 @@ export default function Notifications() {
         setNotifications(list)
         setTotalPages(res.totalPages || 1)
         fetchAvatars(list)
+      } else {
+        // Keep existing notifications/totalPages so retry and pagination stay usable.
+        const msg = (res as { message?: string; error?: string }).message
+          || (res as { error?: string }).error
+          || '加载失败'
+        setError(msg)
       }
-    } catch {
-      // ignore
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '网络错误，请重试')
     } finally {
       setLoading(false)
     }
@@ -105,8 +113,8 @@ export default function Notifications() {
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Fetch data (skip if restored from cache)
-  const skipInitialFetch = useRef(!!cached)
+  // Fetch data (skip only if cache has real notifications — refetch empty caches)
+  const skipInitialFetch = useRef(!!cached && (cached.data.notifications?.length ?? 0) > 0)
   useEffect(() => {
     if (!isLoggedIn) {
       setLoading(false)
@@ -119,11 +127,15 @@ export default function Notifications() {
     fetchPage(page)
   }, [isLoggedIn, page, fetchPage])
 
-  // Save state on unmount
+  // Save state on unmount — skip caching broken/empty snapshots.
   const stateRef = useRef({ notifications, page, totalPages, avatarMap })
   stateRef.current = { notifications, page, totalPages, avatarMap }
   useLayoutEffect(() => {
-    return () => { save(stateRef.current) }
+    return () => {
+      if (stateRef.current.notifications.length > 0) {
+        save(stateRef.current)
+      }
+    }
   }, [save])
 
   const handlePageChange = (newPage: number) => {
@@ -203,11 +215,27 @@ export default function Notifications() {
       {!isDesktop && <PullToRefreshIndicator pullDistance={pullDistance} status={status} />}
 
       <div style={isDesktop ? undefined : pullStyle}>
-        {loading && status === 'idle' ? (
+        {loading && status === 'idle' && notifications.length === 0 ? (
           <Loading />
+        ) : error && notifications.length === 0 ? (
+          <div className={styles.empty}>
+            <p>{error}</p>
+            <button onClick={() => fetchPage(page)} style={{ marginTop: 12, padding: '6px 20px', background: 'var(--accent)', color: 'var(--bg-primary)', borderRadius: 'var(--radius-lg)', fontSize: '0.85rem', fontWeight: 600 }}>
+              重试
+            </button>
+          </div>
         ) : notifications.length === 0 ? (
           <div className={styles.empty}>暂无通知</div>
         ) : (
+          <>
+          {error && (
+            <div className={styles.empty}>
+              <p>{error}</p>
+              <button onClick={() => fetchPage(page)} style={{ marginTop: 12, padding: '6px 20px', background: 'var(--accent)', color: 'var(--bg-primary)', borderRadius: 'var(--radius-lg)', fontSize: '0.85rem', fontWeight: 600 }}>
+                重试
+              </button>
+            </div>
+          )}
           <div className={styles.list}>
             {notifications.map((notif) => {
               const parsed = parseNotification(notif.text || '')
@@ -259,6 +287,7 @@ export default function Notifications() {
               )
             })}
           </div>
+          </>
         )}
         <Pagination page={page} totalPages={totalPages} onPageChange={handlePageChange} />
       </div>

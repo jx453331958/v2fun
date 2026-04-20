@@ -50,7 +50,9 @@ export function useInfiniteScroll<T>({
   const prevResetKeyRef = useRef(resetKey)
   const fetchPageRef = useRef(fetchPage)
   const getItemKeyRef = useRef(getItemKey)
-  const hadInitialStateRef = useRef(!!initialState)
+  // Only honor cached state if it has real items; otherwise refetch so empty/stale
+  // caches (saved from a failed prior attempt) don't strand the user on a blank view.
+  const hadInitialStateRef = useRef(!!initialState && initialState.items.length > 0)
   const itemsRef = useRef(items)
 
   fetchPageRef.current = fetchPage
@@ -83,10 +85,11 @@ export function useInfiniteScroll<T>({
       fetchingRef.current = false
       setIsLoading(false)
       setIsInitialLoading(false)
-    }).catch(() => {
+    }).catch((err) => {
       if (gen !== generationRef.current) return
-      errorRef.current = '网络错误，请重试'
-      setError('网络错误，请重试')
+      const msg = err instanceof Error ? err.message : '网络错误，请重试'
+      errorRef.current = msg
+      setError(msg)
       fetchingRef.current = false
       setIsLoading(false)
       setIsInitialLoading(false)

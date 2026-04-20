@@ -72,7 +72,11 @@ export default function MemberPage() {
         setTopics(res.result || [])
         setTotalPages(res.totalPages || 1)
       } else {
-        setError('加载失败')
+        // Keep previous topics/totalPages so pagination stays navigable on retry.
+        const msg = (res as { message?: string; error?: string }).message
+          || (res as { error?: string }).error
+          || '加载失败'
+        setError(msg)
       }
     } catch {
       setError('网络错误，请重试')
@@ -81,8 +85,8 @@ export default function MemberPage() {
     }
   }, [username, page])
 
-  // Fetch topics (skip if restored from cache)
-  const skipTopicsFetch = useRef(!!cached)
+  // Fetch topics (skip only if cache has real topics — refetch empty/stale caches)
+  const skipTopicsFetch = useRef(!!cached && (cached.data.topics?.length ?? 0) > 0)
   useEffect(() => {
     if (skipTopicsFetch.current) {
       skipTopicsFetch.current = false
@@ -93,10 +97,15 @@ export default function MemberPage() {
 
   // Save state on unmount — useLayoutEffect cleanup runs synchronously
   // before the browser dispatches scroll events from DOM changes.
+  // Skip caching broken/empty snapshots so a retry happens next visit.
   const stateRef = useRef({ member, topics, page, totalPages })
   stateRef.current = { member, topics, page, totalPages }
   useLayoutEffect(() => {
-    return () => { save(stateRef.current) }
+    return () => {
+      if (stateRef.current.topics.length > 0) {
+        save(stateRef.current)
+      }
+    }
   }, [save])
 
   const handlePageChange = (newPage: number) => {
@@ -164,7 +173,7 @@ export default function MemberPage() {
           主题
         </div>
 
-        {error ? (
+        {error && displayTopics.length === 0 ? (
           <div className={styles.empty}>
             <p>{error}</p>
             <button onClick={fetchTopics} style={{ marginTop: 12, padding: '6px 20px', background: 'var(--accent)', color: 'var(--bg-primary)', borderRadius: 'var(--radius-lg)', fontSize: '0.85rem', fontWeight: 600 }}>
@@ -173,11 +182,20 @@ export default function MemberPage() {
           </div>
         ) : (
           <>
+            {error && (
+              <div className={styles.empty}>
+                <p>{error}</p>
+                <button onClick={fetchTopics} style={{ marginTop: 12, padding: '6px 20px', background: 'var(--accent)', color: 'var(--bg-primary)', borderRadius: 'var(--radius-lg)', fontSize: '0.85rem', fontWeight: 600 }}>
+                  重试
+                </button>
+              </div>
+            )}
+
             {displayTopics.map((topic) => (
               <TopicCard key={topic.id} topic={topic} />
             ))}
 
-            {displayTopics.length === 0 && (
+            {displayTopics.length === 0 && !error && (
               <div className={styles.empty}>暂无主题</div>
             )}
 

@@ -439,7 +439,9 @@ async function scrapeNotifications(cookie, page, fwd) {
     },
     redirect: 'manual',
   })
-  if (res.status >= 300) return { notifications: [], totalPages: 1 }
+  if (res.status >= 300) {
+    throw new Error(`upstream_${res.status}`)
+  }
   const html = await res.text()
 
   // Extract total pages from pagination
@@ -537,7 +539,7 @@ async function scrapeReplies(topicId, page, cookie, fwd) {
   }
   const res = await fetch(url, { headers, redirect: 'manual' })
   if (res.status >= 300) {
-    return { replies: [], totalPages: 1 }
+    throw new Error(`upstream_${res.status}`)
   }
   const html = await res.text()
 
@@ -659,7 +661,7 @@ async function scrapeTopicList(url, cookie, fwd) {
   const res = await fetch(url, { headers, redirect: 'manual' })
   if (res.status >= 300) {
     console.warn(`[scrapeTopicList] ${url} → ${res.status}`)
-    return { topics: [], totalPages: 1 }
+    throw new Error(`upstream_${res.status}`)
   }
   const html = await res.text()
 
@@ -824,7 +826,7 @@ app.get('/web/node/:nodeName', webReadLimiter, async (req, res) => {
     res.json({ success: true, result: topics, totalPages })
   } catch (err) {
     console.error('[web/node]', err)
-    res.json({ success: true, result: [], totalPages: 1 })
+    res.status(502).json({ success: false, error: 'upstream_unavailable', message: '上游请求失败，请稍后重试' })
   }
 })
 
@@ -837,7 +839,7 @@ app.get('/web/hot', webReadLimiter, async (req, res) => {
     res.json({ success: true, result: topics, totalPages })
   } catch (err) {
     console.error('[web/hot]', err)
-    res.json({ success: true, result: [], totalPages: 1 })
+    res.status(502).json({ success: false, error: 'upstream_unavailable', message: '上游请求失败，请稍后重试' })
   }
 })
 
@@ -851,7 +853,7 @@ app.get('/web/latest', webReadLimiter, async (req, res) => {
     res.json({ success: true, result: topics, totalPages })
   } catch (err) {
     console.error('[web/latest]', err)
-    res.json({ success: true, result: [], totalPages: 1 })
+    res.status(502).json({ success: false, error: 'upstream_unavailable', message: '上游请求失败，请稍后重试' })
   }
 })
 
@@ -869,7 +871,7 @@ app.get('/web/member/:username/topics', webReadLimiter, async (req, res) => {
     res.json({ success: true, result: topics, totalPages })
   } catch (err) {
     console.error('[web/member/topics]', err)
-    res.json({ success: true, result: [], totalPages: 1 })
+    res.status(502).json({ success: false, error: 'upstream_unavailable', message: '上游请求失败，请稍后重试' })
   }
 })
 
@@ -911,7 +913,7 @@ app.get('/web/replies/:topicId', webReadLimiter, async (req, res) => {
     res.json({ success: true, result: replies, totalPages })
   } catch (err) {
     console.error('[web/replies]', err)
-    res.json({ success: true, result: [], totalPages: 1 })
+    res.status(502).json({ success: false, error: 'upstream_unavailable', message: '上游请求失败，请稍后重试' })
   }
 })
 
@@ -927,7 +929,7 @@ app.get('/web/notifications', webReadLimiter, async (req, res) => {
     res.json({ success: true, result: notifications, totalPages })
   } catch (err) {
     console.error('[web/notifications]', err)
-    res.json({ success: true, result: [], totalPages: 1 })
+    res.status(502).json({ success: false, error: 'upstream_unavailable', message: '上游请求失败，请稍后重试' })
   }
 })
 
