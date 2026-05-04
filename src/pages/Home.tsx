@@ -48,6 +48,29 @@ export default function Home() {
 
   const listColumnRef = useRef<HTMLDivElement>(null)
 
+  // Per-tab scroll memory so switching tabs doesn't carry the old tab's scrollY over.
+  // Seed from cached snapshot so the first tab-switch saves the right position.
+  const scrollPositionsRef = useRef<Record<Tab, number>>({
+    hot: cached?.data.tab === 'hot' ? cached.scrollY : 0,
+    latest: cached?.data.tab === 'latest' ? cached.scrollY : 0,
+  })
+  const pendingScrollTabRef = useRef<Tab | null>(null)
+  // Snapshot of `topics` at the moment of tab switch — used to detect when the
+  // new tab's data has actually loaded (vs the stale list left over from the previous tab).
+  const tabSwitchTopicsRef = useRef<V2Topic[]>(cached?.data.topics ?? [])
+
+  const getScrollTop = useCallback(() => {
+    return isDesktop ? listColumnRef.current?.scrollTop ?? 0 : window.scrollY
+  }, [isDesktop])
+
+  const scrollToPosition = useCallback((y: number) => {
+    if (isDesktop) {
+      listColumnRef.current?.scrollTo({ top: y })
+    } else {
+      window.scrollTo({ top: y })
+    }
+  }, [isDesktop])
+
   const fetchData = useCallback(async (t: Tab, p: number) => {
     setLoading(true)
     setError('')
@@ -101,9 +124,25 @@ export default function Home() {
   }, [save])
 
   const handleTabChange = (t: Tab) => {
+    if (t === tab) return
+    scrollPositionsRef.current[tab] = getScrollTop()
+    pendingScrollTabRef.current = t
+    tabSwitchTopicsRef.current = topics
     setTab(t)
     setPage(1)
   }
+
+  // Restore the destination tab's scroll once its NEW content has rendered.
+  // We can't just wait on `loading` — at the moment of tab switch the previous
+  // fetch's `loading` is already false, and the new fetch hasn't started yet.
+  // Instead watch for `topics` to flip to a fresh array (set by the new fetch),
+  // which guarantees the layout matches the saved scroll position.
+  useLayoutEffect(() => {
+    if (pendingScrollTabRef.current === tab && topics !== tabSwitchTopicsRef.current) {
+      scrollToPosition(scrollPositionsRef.current[tab])
+      pendingScrollTabRef.current = null
+    }
+  }, [tab, topics, scrollToPosition])
 
   const handlePageChange = (newPage: number) => {
     setPage(newPage)
