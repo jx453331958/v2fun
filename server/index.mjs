@@ -168,6 +168,30 @@ function buildCookieHeader(cookie) {
   return `PB3_SESSION=${cookie}`
 }
 
+/** Merge a response's Set-Cookie lines into an existing Cookie request header.
+ *
+ * V2EX rotates PB3_SESSION on every response and binds `once` tokens to the
+ * newly issued session. POST'ing a form with the OLD PB3_SESSION fails with
+ * "CSRF 失效". Callers that read `once` from a GET must reuse the returned
+ * Cookie header (containing V2EX's new PB3_SESSION) when POST'ing the form. */
+function mergeSetCookieIntoHeader(originalCookieHeader, setCookieList) {
+  const jar = new Map()
+  for (const pair of originalCookieHeader.split(';')) {
+    const idx = pair.indexOf('=')
+    if (idx === -1) continue
+    const name = pair.slice(0, idx).trim()
+    if (name) jar.set(name, pair.slice(idx + 1).trim())
+  }
+  for (const sc of setCookieList || []) {
+    const firstPart = sc.split(';')[0]
+    const idx = firstPart.indexOf('=')
+    if (idx === -1) continue
+    const name = firstPart.slice(0, idx).trim()
+    if (name) jar.set(name, firstPart.slice(idx + 1).trim())
+  }
+  return [...jar.entries()].map(([k, v]) => `${k}=${v}`).join('; ')
+}
+
 const FALLBACK_UA = 'Mozilla/5.0 (compatible; V2Fun/1.0)'
 // Desktop UA for scraping — V2EX strips pagination from mobile pages
 const SCRAPE_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -201,7 +225,10 @@ async function verifyV2exCookie(cookieStr, fwd) {
   return match[1]
 }
 
-/** Fetch once token from topic page */
+/** Fetch once token from topic page.
+ * Returns the once string AND a Cookie header that includes any new PB3_SESSION
+ * V2EX rotated in via Set-Cookie. Callers MUST use this returned header when
+ * POSTing the form — V2EX binds `once` to the newly issued session. */
 async function fetchOnceToken(cookie, topicId, fwd) {
   const url = `https://www.v2ex.com/t/${topicId}`
   const cookieHeader = buildCookieHeader(cookie)
@@ -230,7 +257,8 @@ async function fetchOnceToken(cookie, topicId, fwd) {
     err.detail = html.includes('/signin') ? 'V2EX 返回了登录页，Cookie 无效' : '页面中未找到 once token'
     throw err
   }
-  return match[1]
+  const freshCookieHeader = mergeSetCookieIntoHeader(cookieHeader, res.headers.getSetCookie?.() || [])
+  return { once: match[1], freshCookieHeader }
 }
 
 // ── Security hardening ────────────────────────────────────
@@ -943,7 +971,7 @@ app.post('/web/reply', webWriteLimiter, express.json({ limit: '16kb' }), async (
 
   const fwd = getForwardHeaders(req)
   try {
-    const once = await fetchOnceToken(cookie, topicId, fwd)
+    const { once, freshCookieHeader } = await fetchOnceToken(cookie, topicId, fwd)
     const formData = new URLSearchParams()
     formData.append('content', content)
     formData.append('once', once)
@@ -951,7 +979,7 @@ app.post('/web/reply', webWriteLimiter, express.json({ limit: '16kb' }), async (
     const postRes = await fetch(`https://www.v2ex.com/t/${topicId}`, {
       method: 'POST',
       headers: {
-        'Cookie': buildCookieHeader(cookie),
+        'Cookie': freshCookieHeader,
         'User-Agent': fwd.userAgent,
         'Content-Type': 'application/x-www-form-urlencoded',
         'Origin': 'https://www.v2ex.com',
@@ -1037,6 +1065,8 @@ app.post('/web/topic', webWriteLimiter, express.json({ limit: '32kb' }), async (
       return res.json({ success: false, error: 'once_not_found', message: '无法获取 once token，请稍后重试' })
     }
     const once = onceMatch[1]
+    // V2EX rotates PB3_SESSION on this GET; the once is bound to the new session.
+    const freshCookieHeader = mergeSetCookieIntoHeader(cookieHeader, pageRes.headers.getSetCookie?.() || [])
 
     // POST the topic form
     const formData = new URLSearchParams()
@@ -1049,7 +1079,7 @@ app.post('/web/topic', webWriteLimiter, express.json({ limit: '32kb' }), async (
     const postRes = await fetch('https://www.v2ex.com/write', {
       method: 'POST',
       headers: {
-        'Cookie': cookieHeader,
+        'Cookie': freshCookieHeader,
         'User-Agent': fwd.userAgent,
         'Content-Type': 'application/x-www-form-urlencoded',
         'Origin': 'https://www.v2ex.com',
@@ -1107,11 +1137,11 @@ app.post('/web/thank/topic/:id', webWriteLimiter, express.json({ limit: '1kb' })
   const topicId = req.params.id
   const fwd = getForwardHeaders(req)
   try {
-    const once = await fetchOnceToken(cookie, topicId, fwd)
+    const { once, freshCookieHeader } = await fetchOnceToken(cookie, topicId, fwd)
     const thankRes = await fetch(`https://www.v2ex.com/thank/topic/${topicId}?once=${once}`, {
       method: 'POST',
       headers: {
-        'Cookie': buildCookieHeader(cookie),
+        'Cookie': freshCookieHeader,
         'User-Agent': fwd.userAgent,
         'Referer': `https://www.v2ex.com/t/${topicId}`,
         'X-Requested-With': 'XMLHttpRequest',
@@ -1142,11 +1172,11 @@ app.post('/web/thank/reply/:id', webWriteLimiter, express.json({ limit: '1kb' })
 
   const fwd = getForwardHeaders(req)
   try {
-    const once = await fetchOnceToken(cookie, topicId, fwd)
+    const { once, freshCookieHeader } = await fetchOnceToken(cookie, topicId, fwd)
     const thankRes = await fetch(`https://www.v2ex.com/thank/reply/${replyId}?once=${once}`, {
       method: 'POST',
       headers: {
-        'Cookie': buildCookieHeader(cookie),
+        'Cookie': freshCookieHeader,
         'User-Agent': fwd.userAgent,
         'Referer': `https://www.v2ex.com/t/${topicId}`,
         'X-Requested-With': 'XMLHttpRequest',
