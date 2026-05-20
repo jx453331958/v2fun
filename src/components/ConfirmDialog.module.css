@@ -1,0 +1,121 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+  padding-bottom: calc(20px + var(--safe-bottom));
+  animation: backdropIn 0.18s ease-out;
+}
+
+@keyframes backdropIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.dialog {
+  width: 100%;
+  max-width: 320px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 24px 20px 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: dialogIn 0.22s cubic-bezier(0.22, 1.2, 0.4, 1);
+}
+
+@keyframes dialogIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.iconWrap {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--accent-warm-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent-warm);
+  margin-bottom: 14px;
+  box-shadow: 0 0 24px rgba(255, 138, 80, 0.18);
+  animation: heartBeat 1.4s ease-in-out infinite;
+}
+
+@keyframes heartBeat {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+}
+
+.title {
+  font-size: 0.98rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+  text-align: center;
+}
+
+.message {
+  font-size: 0.78rem;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  text-align: center;
+  margin-bottom: 20px;
+  word-break: break-word;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+
+.btn {
+  flex: 1;
+  height: 40px;
+  border-radius: var(--radius-md);
+  font-size: 0.82rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: background 0.15s, color 0.15s, transform 0.1s;
+}
+
+.btn:active {
+  transform: scale(0.97);
+}
+
+.cancel {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+.cancel:active {
+  background: var(--bg-accent);
+}
+
+.confirm {
+  background: var(--accent-warm);
+  color: #fff;
+}
+
+.confirm:active {
+  background: #E87740;
+}

@@ -5,6 +5,7 @@ import { zhCN } from 'date-fns/locale'
 import { web, getTopicWebUrl } from '../api/client'
 import type { V2Reply } from '../types'
 import { sanitizeHtml } from '../utils/sanitize'
+import ConfirmDialog from './ConfirmDialog'
 import styles from './ReplyItem.module.css'
 
 interface Props {
@@ -22,19 +23,25 @@ export default function ReplyItem({ reply, floor, topicId, highlight, hasCookie,
   const [thanked, setThanked] = useState(reply.thanked)
   const [thanks, setThanks] = useState(reply.thanks)
   const [thanking, setThanking] = useState(false)
+  const [confirmOpen, setConfirmOpen] = useState(false)
 
   const timeAgo = formatDistanceToNow(new Date(reply.created * 1000), {
     locale: zhCN,
     addSuffix: true,
   })
 
-  const handleThank = async (e: React.MouseEvent) => {
+  const handleThankClick = (e: React.MouseEvent) => {
     e.stopPropagation()
     if (thanked || thanking) return
     if (!hasCookie) {
       window.open(getTopicWebUrl(topicId), '_blank')
       return
     }
+    setConfirmOpen(true)
+  }
+
+  const confirmThank = async () => {
+    setConfirmOpen(false)
     setThanking(true)
     try {
       const res = await web.thankReply(reply.id, topicId)
@@ -97,7 +104,7 @@ export default function ReplyItem({ reply, floor, topicId, highlight, hasCookie,
           )}
           <button
             className={`${styles.thankBtn} ${thanked ? styles.thanked : ''}`}
-            onClick={handleThank}
+            onClick={handleThankClick}
             disabled={thanking || thanked}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill={thanked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -107,6 +114,14 @@ export default function ReplyItem({ reply, floor, topicId, highlight, hasCookie,
           </button>
         </div>
       </div>
+      <ConfirmDialog
+        open={confirmOpen}
+        title="感谢这条回复?"
+        message={`感谢 @${reply.member.username} 在 #${floor} 楼的回复,将消耗 10 铜币且不可撤销。`}
+        confirmText="确认感谢"
+        onConfirm={confirmThank}
+        onCancel={() => setConfirmOpen(false)}
+      />
     </div>
   )
 }

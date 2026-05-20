@@ -9,6 +9,7 @@ import ReplyItem from '../components/ReplyItem'
 import Loading from '../components/Loading'
 import Pagination from '../components/Pagination'
 import PullToRefreshIndicator from '../components/PullToRefreshIndicator'
+import ConfirmDialog from '../components/ConfirmDialog'
 import { useAuth } from '../hooks/useAuth'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { sanitizeHtml } from '../utils/sanitize'
@@ -44,6 +45,7 @@ export default function TopicDetail({ topicId: propTopicId, initialFloor, embedd
   const [submitting, setSubmitting] = useState(false)
   const [thankedTopic, setThankedTopic] = useState(false)
   const [thankingTopic, setThankingTopic] = useState(false)
+  const [thankConfirmOpen, setThankConfirmOpen] = useState(false)
   const [replyError, setReplyError] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -173,12 +175,18 @@ export default function TopicDetail({ topicId: propTopicId, initialFloor, embedd
     }
   }
 
-  const handleThankTopic = async () => {
+  const handleThankTopicClick = () => {
     if (!id || thankingTopic || thankedTopic) return
     if (!isLoggedIn) {
       openInV2EX()
       return
     }
+    setThankConfirmOpen(true)
+  }
+
+  const confirmThankTopic = async () => {
+    setThankConfirmOpen(false)
+    if (!id) return
     setThankingTopic(true)
     try {
       const res = await web.thankTopic(id)
@@ -270,7 +278,7 @@ export default function TopicDetail({ topicId: propTopicId, initialFloor, embedd
           <div className={styles.topicActions}>
             <button
               className={`${styles.actionBtn} ${thankedTopic ? styles.thanked : ''}`}
-              onClick={handleThankTopic}
+              onClick={handleThankTopicClick}
               disabled={thankingTopic || thankedTopic}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill={thankedTopic ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8">
@@ -349,6 +357,14 @@ export default function TopicDetail({ topicId: propTopicId, initialFloor, embedd
           </button>
         )}
       </div>
+      <ConfirmDialog
+        open={thankConfirmOpen}
+        title="感谢主题作者?"
+        message={`感谢 @${topic.member?.username ?? ''} 的分享,将消耗 10 铜币且不可撤销。`}
+        confirmText="确认感谢"
+        onConfirm={confirmThankTopic}
+        onCancel={() => setThankConfirmOpen(false)}
+      />
     </div>
   )
 }
