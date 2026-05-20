@@ -1,9 +1,10 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { formatDistanceToNow } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
 import type { V2Topic } from '../types'
 import { useBlockedNodes } from '../hooks/useBlockedNodes'
+import ConfirmDialog from './ConfirmDialog'
 import styles from './TopicCard.module.css'
 
 const LONG_PRESS_MS = 500
@@ -38,11 +39,16 @@ export default function TopicCard({ topic, onSelect, selected }: Props) {
   // happens to start on the badge isn't misread as a long-press.
   const longPressTimer = useRef<number | null>(null)
   const longPressFired = useRef(false)
+  const [confirmOpen, setConfirmOpen] = useState(false)
 
   const promptBlock = () => {
     if (!topic.node) return
-    const ok = window.confirm(`屏蔽节点「${topic.node.title}」?\n以后该节点的主题不再出现在列表`)
-    if (ok) blockNode(topic.node.name)
+    setConfirmOpen(true)
+  }
+
+  const handleConfirmBlock = () => {
+    if (topic.node) blockNode(topic.node.name)
+    setConfirmOpen(false)
   }
 
   const clearLongPress = () => {
@@ -80,6 +86,7 @@ export default function TopicCard({ topic, onSelect, selected }: Props) {
   }
 
   return (
+    <>
     <article
       className={`${styles.card} ${selected ? styles.selected : ''}`}
       onClick={handleClick}
@@ -140,5 +147,17 @@ export default function TopicCard({ topic, onSelect, selected }: Props) {
       </div>
       <h3 className={styles.title}>{topic.title}</h3>
     </article>
+    {topic.node && (
+      <ConfirmDialog
+        open={confirmOpen}
+        title={`屏蔽节点「${topic.node.title}」?`}
+        message="以后该节点的主题不再出现在列表，可在「我的 → 已屏蔽节点」恢复"
+        confirmText="屏蔽"
+        cancelText="取消"
+        onConfirm={handleConfirmBlock}
+        onCancel={() => setConfirmOpen(false)}
+      />
+    )}
+    </>
   )
 }
