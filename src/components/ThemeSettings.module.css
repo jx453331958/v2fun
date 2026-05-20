@@ -1,0 +1,98 @@
+.section {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  margin-bottom: 10px;
+  border: 1px solid var(--border);
+}
+
+.sectionTitle {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 12px;
+  font-family: var(--font-mono);
+}
+
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.row + .row {
+  margin-top: 14px;
+}
+
+.rowLabel {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+
+.accentName {
+  color: var(--accent);
+  font-weight: 500;
+}
+
+/* Mode toggle (segmented) */
+.modeToggle {
+  display: flex;
+  gap: 6px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-md);
+  padding: 4px;
+}
+
+.modeBtn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  transition: background 0.15s, color 0.15s;
+}
+
+.modeBtn[data-active="true"] {
+  background: var(--bg-elevated);
+  color: var(--accent);
+  box-shadow: var(--shadow-sm);
+}
+
+.modeBtn:active {
+  transform: scale(0.98);
+}
+
+/* Accent swatches */
+.accentRow {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.12s;
+  position: relative;
+  padding: 0;
+}
+
+.swatch:active {
+  transform: scale(0.92);
+}
+
+.swatch[data-active="true"] {
+  box-shadow:
+    0 0 0 2px var(--bg-secondary),
+    0 0 0 4px currentColor;
+}

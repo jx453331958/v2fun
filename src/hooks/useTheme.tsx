@@ -1,0 +1,72 @@
+import { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
+
+export type ThemeMode = 'dark' | 'light'
+export type AccentSlug = 'teal' | 'indigo' | 'sage' | 'coral' | 'plum' | 'amber'
+
+export const ACCENTS: ReadonlyArray<{ slug: AccentSlug; name: string; color: string }> = [
+  { slug: 'teal', name: '雾松绿', color: '#5FA8A0' },
+  { slug: 'indigo', name: '静蓝', color: '#7B8FD8' },
+  { slug: 'sage', name: '鼠尾草', color: '#7CA982' },
+  { slug: 'coral', name: '珊瑚橘', color: '#E89B6C' },
+  { slug: 'plum', name: '梅子紫', color: '#B084CC' },
+  { slug: 'amber', name: '蜜琥珀', color: '#D4A574' },
+]
+
+const STORAGE_THEME = 'v2fun_theme'
+const STORAGE_ACCENT = 'v2fun_accent'
+const DEFAULT_THEME: ThemeMode = 'dark'
+const DEFAULT_ACCENT: AccentSlug = 'teal'
+
+function readTheme(): ThemeMode {
+  const attr = typeof document !== 'undefined'
+    ? document.documentElement.getAttribute('data-theme')
+    : null
+  if (attr === 'dark' || attr === 'light') return attr
+  return DEFAULT_THEME
+}
+
+function readAccent(): AccentSlug {
+  const attr = typeof document !== 'undefined'
+    ? document.documentElement.getAttribute('data-accent')
+    : null
+  if (attr && ACCENTS.some(a => a.slug === attr)) return attr as AccentSlug
+  return DEFAULT_ACCENT
+}
+
+interface ThemeContextValue {
+  theme: ThemeMode
+  accent: AccentSlug
+  setTheme: (t: ThemeMode) => void
+  setAccent: (a: AccentSlug) => void
+}
+
+const ThemeContext = createContext<ThemeContextValue | null>(null)
+
+export function ThemeProvider({ children }: { children: ReactNode }) {
+  const [theme, setThemeState] = useState<ThemeMode>(() => readTheme())
+  const [accent, setAccentState] = useState<AccentSlug>(() => readAccent())
+
+  const setTheme = useCallback((t: ThemeMode) => {
+    setThemeState(t)
+    document.documentElement.setAttribute('data-theme', t)
+    try { localStorage.setItem(STORAGE_THEME, t) } catch { /* private mode etc. */ }
+  }, [])
+
+  const setAccent = useCallback((a: AccentSlug) => {
+    setAccentState(a)
+    document.documentElement.setAttribute('data-accent', a)
+    try { localStorage.setItem(STORAGE_ACCENT, a) } catch { /* ignore */ }
+  }, [])
+
+  return (
+    <ThemeContext.Provider value={{ theme, accent, setTheme, setAccent }}>
+      {children}
+    </ThemeContext.Provider>
+  )
+}
+
+export function useTheme(): ThemeContextValue {
+  const ctx = useContext(ThemeContext)
+  if (!ctx) throw new Error('useTheme must be used within ThemeProvider')
+  return ctx
+}

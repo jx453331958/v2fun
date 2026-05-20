@@ -18,38 +18,15 @@
 }
 
 :root {
-  --bg-primary: #0B0B10;
-  --bg-secondary: #13131A;
-  --bg-tertiary: #1C1C26;
-  --bg-accent: #1A1A28;
-  --bg-elevated: #1E1E2A;
-
-  --text-primary: #E8E8ED;
-  --text-secondary: #8F8FA3;
-  --text-tertiary: #5A5A6E;
-
-  --accent: #00D4FF;
-  --accent-hover: #00B8E0;
-  --accent-light: rgba(0, 212, 255, 0.08);
-  --accent-glow: rgba(0, 212, 255, 0.15);
-
-  --accent-warm: #FF8A50;
-  --accent-warm-light: rgba(255, 138, 80, 0.1);
-
+  /* === Static tokens (主题无关) === */
   --success: #34D399;
   --success-light: rgba(52, 211, 153, 0.08);
   --warning: #FBBF24;
   --danger: #F87171;
   --danger-light: rgba(248, 113, 113, 0.1);
 
-  --border: rgba(255, 255, 255, 0.06);
-  --border-light: rgba(255, 255, 255, 0.04);
-  --border-accent: rgba(0, 212, 255, 0.12);
-
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.6);
-  --glow-accent: 0 0 20px rgba(0, 212, 255, 0.15);
+  --accent-warm: #FF8A50;
+  --accent-warm-light: rgba(255, 138, 80, 0.1);
 
   --radius-sm: 6px;
   --radius-md: 10px;
@@ -70,6 +47,106 @@
   --sidebar-width: 220px;
   --desktop-list-width: clamp(420px, 30vw, 560px);
   --desktop-content-max: 920px;
+
+  color-scheme: dark;
+}
+
+/* === Mode 层 === */
+[data-theme="dark"] {
+  --bg-primary: #0B0B10;
+  --bg-secondary: #13131A;
+  --bg-tertiary: #1C1C26;
+  --bg-accent: #1A1A28;
+  --bg-elevated: #1E1E2A;
+
+  --text-primary: #E8E8ED;
+  --text-secondary: #8F8FA3;
+  --text-tertiary: #5A5A6E;
+
+  --border: rgba(255, 255, 255, 0.06);
+  --border-light: rgba(255, 255, 255, 0.04);
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.6);
+
+  color-scheme: dark;
+}
+
+[data-theme="light"] {
+  --bg-primary: #F7F7FA;
+  --bg-secondary: #FFFFFF;
+  --bg-tertiary: #EFEFF4;
+  --bg-accent: #E8E8F0;
+  --bg-elevated: #FFFFFF;
+
+  --text-primary: #1A1A24;
+  --text-secondary: #5A5A6E;
+  --text-tertiary: #8F8FA3;
+
+  --border: rgba(0, 0, 0, 0.08);
+  --border-light: rgba(0, 0, 0, 0.05);
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.12);
+
+  color-scheme: light;
+}
+
+/* === Accent 层 === */
+[data-accent="teal"] {
+  --accent: #5FA8A0;
+  --accent-hover: #4D8E87;
+  --accent-light: rgba(95, 168, 160, 0.10);
+  --accent-glow: rgba(95, 168, 160, 0.18);
+  --border-accent: rgba(95, 168, 160, 0.18);
+  --glow-accent: 0 0 20px rgba(95, 168, 160, 0.18);
+}
+
+[data-accent="indigo"] {
+  --accent: #7B8FD8;
+  --accent-hover: #6577C2;
+  --accent-light: rgba(123, 143, 216, 0.10);
+  --accent-glow: rgba(123, 143, 216, 0.18);
+  --border-accent: rgba(123, 143, 216, 0.18);
+  --glow-accent: 0 0 20px rgba(123, 143, 216, 0.18);
+}
+
+[data-accent="sage"] {
+  --accent: #7CA982;
+  --accent-hover: #65906B;
+  --accent-light: rgba(124, 169, 130, 0.10);
+  --accent-glow: rgba(124, 169, 130, 0.18);
+  --border-accent: rgba(124, 169, 130, 0.18);
+  --glow-accent: 0 0 20px rgba(124, 169, 130, 0.18);
+}
+
+[data-accent="coral"] {
+  --accent: #E89B6C;
+  --accent-hover: #D17F50;
+  --accent-light: rgba(232, 155, 108, 0.10);
+  --accent-glow: rgba(232, 155, 108, 0.18);
+  --border-accent: rgba(232, 155, 108, 0.18);
+  --glow-accent: 0 0 20px rgba(232, 155, 108, 0.18);
+}
+
+[data-accent="plum"] {
+  --accent: #B084CC;
+  --accent-hover: #946BB0;
+  --accent-light: rgba(176, 132, 204, 0.10);
+  --accent-glow: rgba(176, 132, 204, 0.18);
+  --border-accent: rgba(176, 132, 204, 0.18);
+  --glow-accent: 0 0 20px rgba(176, 132, 204, 0.18);
+}
+
+[data-accent="amber"] {
+  --accent: #D4A574;
+  --accent-hover: #B88B5C;
+  --accent-light: rgba(212, 165, 116, 0.10);
+  --accent-glow: rgba(212, 165, 116, 0.18);
+  --border-accent: rgba(212, 165, 116, 0.18);
+  --glow-accent: 0 0 20px rgba(212, 165, 116, 0.18);
 }
 
 * {
@@ -105,8 +182,8 @@ body::before {
   right: 0;
   bottom: 0;
   background:
-    radial-gradient(ellipse at 15% 0%, rgba(0, 212, 255, 0.04) 0%, transparent 50%),
-    radial-gradient(ellipse at 85% 100%, rgba(0, 212, 255, 0.02) 0%, transparent 50%);
+    radial-gradient(ellipse at 15% 0%, var(--accent-light) 0%, transparent 50%),
+    radial-gradient(ellipse at 85% 100%, var(--accent-light) 0%, transparent 50%);
   pointer-events: none;
   z-index: 0;
 }
@@ -224,7 +301,7 @@ button {
 .rendered-content a {
   color: var(--accent);
   text-decoration: underline;
-  text-decoration-color: rgba(0, 212, 255, 0.3);
+  text-decoration-color: var(--accent-glow);
   text-underline-offset: 2px;
   transition: text-decoration-color 0.2s;
 }

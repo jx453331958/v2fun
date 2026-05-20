@@ -157,7 +157,7 @@
 .help a {
   color: var(--accent);
   text-decoration: underline;
-  text-decoration-color: rgba(0, 212, 255, 0.3);
+  text-decoration-color: var(--accent-glow);
   text-underline-offset: 2px;
 }
 

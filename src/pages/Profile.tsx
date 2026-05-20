@@ -3,6 +3,7 @@ import { formatDistanceToNow } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
 import { useAuth } from '../hooks/useAuth'
 import Loading from '../components/Loading'
+import ThemeSettings from '../components/ThemeSettings'
 import styles from './Profile.module.css'
 
 export default function Profile() {
@@ -84,6 +85,8 @@ export default function Profile() {
             )}
           </div>
         </div>
+
+        <ThemeSettings />
 
         <div className={styles.section}>
           <button

@@ -77,13 +77,13 @@
   border-radius: 50%;
   background: var(--accent);
   color: var(--bg-primary);
-  box-shadow: 0 0 16px rgba(0, 212, 255, 0.3);
+  box-shadow: var(--glow-accent);
   transition: transform 0.15s, box-shadow 0.15s;
 }
 
 .createBtn:active svg {
   transform: scale(0.9);
-  box-shadow: 0 0 8px rgba(0, 212, 255, 0.3);
+  box-shadow: var(--glow-accent);
 }
 
 /* ================================================================
@@ -172,7 +172,7 @@
   font-size: 0.9rem;
   font-weight: 600;
   transition: background 0.15s, transform 0.1s;
-  box-shadow: 0 0 14px rgba(0, 212, 255, 0.18);
+  box-shadow: var(--glow-accent);
 }
 
 .sidebarCreate:hover {

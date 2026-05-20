@@ -15,12 +15,12 @@
 }
 
 .arc {
-  filter: drop-shadow(0 0 4px rgba(0, 212, 255, 0.5));
+  filter: drop-shadow(0 0 4px var(--accent));
   transition: stroke-dashoffset 0.06s linear;
 }
 
 .spinning .arc {
-  filter: drop-shadow(0 0 6px rgba(0, 212, 255, 0.65));
+  filter: drop-shadow(0 0 6px var(--accent));
   transition: none;
 }
 
