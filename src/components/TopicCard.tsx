@@ -156,6 +156,7 @@ export default function TopicCard({ topic, onSelect, selected }: Props) {
         cancelText="取消"
         onConfirm={handleConfirmBlock}
         onCancel={() => setConfirmOpen(false)}
+        variant="block"
       />
     )}
     </>

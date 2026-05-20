@@ -77,11 +77,11 @@
 }
 
 .dropdownItem:active {
-  background: rgba(128, 128, 128, 0.1);
+  background: var(--bg-tertiary);
 }
 
 .dropdownItemSelected {
-  background: rgba(128, 128, 128, 0.08);
+  background: var(--bg-accent);
 }
 
 .dropdownTitle {
@@ -143,8 +143,8 @@
 .error {
   padding: 10px 12px;
   border-radius: var(--radius-md);
-  background: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
+  background: var(--danger-light);
+  color: var(--danger);
   font-size: 0.84rem;
   margin-bottom: 16px;
   line-height: 1.5;
