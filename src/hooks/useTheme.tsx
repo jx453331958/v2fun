@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react'
 
 export type ThemeMode = 'dark' | 'light'
 export type AccentSlug = 'teal' | 'indigo' | 'sage' | 'coral' | 'plum' | 'amber' | 'neutral'
@@ -54,6 +54,15 @@ const ThemeContext = createContext<ThemeContextValue | null>(null)
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<ThemeMode>(() => readTheme())
   const [accent, setAccentState] = useState<AccentSlug>(() => readAccent())
+
+  // 兜底:即使 inline script 因任何原因没跑(CSP 拒、CDN 干扰...),React mount 时
+  // 把当前 state(来自 localStorage)同步到 DOM,确保 CSS 变量能生效。
+  // 代价是首屏可能有半帧 FOUC,但状态正确。正常路径下 inline script 已经写过,这里是 no-op。
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme)
+    document.documentElement.setAttribute('data-accent', accent)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const setTheme = useCallback((t: ThemeMode) => {
     setThemeState(t)

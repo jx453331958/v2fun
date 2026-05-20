@@ -274,9 +274,14 @@ app.use((_req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff')
   res.setHeader('X-Frame-Options', 'DENY')
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin')
+  // index.html 里有一段 inline 主题恢复脚本,需要把它的 SHA-256 加进 script-src。
+  // 修改 index.html 里那段 <script data-cfasync="false"> ... </script> 时,必须重算 hash:
+  //   python3 -c "import re,hashlib,base64; \
+  //     m=re.search(r'<script data-cfasync=\"false\">(.*?)</script>', open('index.html').read(), re.S); \
+  //     print('sha256-'+base64.b64encode(hashlib.sha256(m.group(1).encode()).digest()).decode())"
   res.setHeader('Content-Security-Policy', [
     "default-src 'self'",
-    "script-src 'self' https://static.cloudflareinsights.com",
+    "script-src 'self' 'sha256-AyB1kW4Pau0Asgit2/mLySgr0g65B5ogd1SkSXCd248=' https://static.cloudflareinsights.com",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' https: data:",
     "font-src 'self'",
