@@ -8,7 +8,12 @@
 .embedded {
   position: relative;
   width: 100%;
-  max-width: var(--desktop-content-max);
+  /* Local override of --desktop-content-max (920px). The 920 limit is great
+     for single-column pages like Profile/Member but leaves a big asymmetric
+     gutter in this two-column desktop view on 1920+ screens.
+     1400 keeps the four-edge gap equal up through ~2560 displays while
+     still capping line length on naked 4K. */
+  max-width: 1400px;
   min-height: 0;
   overflow-y: auto;
   display: flex;
