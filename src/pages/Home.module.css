@@ -8,7 +8,6 @@
   z-index: 50;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   height: calc(var(--header-height) + var(--safe-top));
   padding-top: var(--safe-top);
   padding-left: 16px;
@@ -45,6 +44,10 @@
   background: var(--bg-tertiary);
   border-radius: var(--radius-sm);
   padding: 2px;
+  /* Mobile: push the tab pill (and the search button after it) to the
+     right so [logo]————[tabs][🔍] reads as a single interactive cluster.
+     Desktop resets this so tabs sit at the left of the list column. */
+  margin-left: auto;
 }
 
 .tab {
@@ -74,8 +77,6 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
-/* Mobile: header uses `justify-content: space-between` so 3 items
-   (logo, tabs, searchBtn) auto-distribute. Desktop overrides this. */
 .searchBtn {
   width: 32px;
   height: 32px;
@@ -84,6 +85,9 @@
   justify-content: center;
   border-radius: var(--radius-sm);
   color: var(--text-secondary);
+  /* Fixed breathing room from the tab pill — independent of viewport width
+     so the cluster never visually drifts. */
+  margin-left: 12px;
   transition: background 0.15s, color 0.15s;
 }
 
@@ -99,7 +103,10 @@
 }
 
 @media (min-width: 960px) {
-  /* Desktop header is `flex-start + gap`, so push searchBtn to the right edge. */
+  /* Desktop: tabs at left of the list column, search pushed to the far right. */
+  .tabs {
+    margin-left: 0;
+  }
   .searchBtn {
     margin-left: auto;
   }
