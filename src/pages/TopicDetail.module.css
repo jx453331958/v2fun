@@ -3,20 +3,24 @@
   background: var(--bg-primary);
 }
 
-/* Embedded mode (desktop right pane): own scroll container, no fixed reply bar. */
+/* Embedded mode (desktop right pane): a card floating in the detail column,
+   own scroll container, sticky reply bar pinned to the card's bottom. */
 .embedded {
   position: relative;
-  height: 100dvh;
+  width: 100%;
+  max-width: var(--desktop-content-max);
   min-height: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
 }
 
 .embedded > * {
   width: 100%;
-  max-width: var(--desktop-content-max);
 }
 
 .embedded .repliesSection {
@@ -31,7 +35,7 @@
   right: auto;
   transform: none;
   width: 100%;
-  max-width: var(--desktop-content-max);
+  max-width: 100%;
   margin-top: auto;
 }
 
