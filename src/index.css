@@ -149,6 +149,25 @@
   --glow-accent: 0 0 20px rgba(212, 165, 116, 0.18);
 }
 
+/* neutral 在两个 mode 下分别用浅灰/深灰,保持"无彩"可读 */
+[data-accent="neutral"][data-theme="dark"] {
+  --accent: #B8B8C8;
+  --accent-hover: #9E9EB0;
+  --accent-light: rgba(184, 184, 200, 0.10);
+  --accent-glow: rgba(184, 184, 200, 0.18);
+  --border-accent: rgba(184, 184, 200, 0.18);
+  --glow-accent: 0 0 20px rgba(184, 184, 200, 0.18);
+}
+
+[data-accent="neutral"][data-theme="light"] {
+  --accent: #4A4A56;
+  --accent-hover: #36363F;
+  --accent-light: rgba(74, 74, 86, 0.08);
+  --accent-glow: rgba(74, 74, 86, 0.15);
+  --border-accent: rgba(74, 74, 86, 0.15);
+  --glow-accent: 0 0 20px rgba(74, 74, 86, 0.15);
+}
+
 * {
   margin: 0;
   padding: 0;

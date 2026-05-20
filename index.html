@@ -12,13 +12,13 @@
     <link rel="manifest" href="/manifest.json" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <title>V2Fun - V2EX Client</title>
-    <script>
+    <script data-cfasync="false">
       (function () {
         try {
           var t = localStorage.getItem('v2fun_theme');
           var a = localStorage.getItem('v2fun_accent');
           if (t !== 'light' && t !== 'dark') t = 'dark';
-          if (['teal','indigo','sage','coral','plum','amber'].indexOf(a) === -1) a = 'teal';
+          if (['teal','indigo','sage','coral','plum','amber','neutral'].indexOf(a) === -1) a = 'teal';
           document.documentElement.setAttribute('data-theme', t);
           document.documentElement.setAttribute('data-accent', a);
         } catch (e) {

@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
 
 export type ThemeMode = 'dark' | 'light'
-export type AccentSlug = 'teal' | 'indigo' | 'sage' | 'coral' | 'plum' | 'amber'
+export type AccentSlug = 'teal' | 'indigo' | 'sage' | 'coral' | 'plum' | 'amber' | 'neutral'
 
 export const ACCENTS: ReadonlyArray<{ slug: AccentSlug; name: string; color: string }> = [
   { slug: 'teal', name: '雾松绿', color: '#5FA8A0' },
@@ -10,6 +10,7 @@ export const ACCENTS: ReadonlyArray<{ slug: AccentSlug; name: string; color: str
   { slug: 'coral', name: '珊瑚橘', color: '#E89B6C' },
   { slug: 'plum', name: '梅子紫', color: '#B084CC' },
   { slug: 'amber', name: '蜜琥珀', color: '#D4A574' },
+  { slug: 'neutral', name: '无彩', color: '#7E7E8C' },
 ]
 
 const STORAGE_THEME = 'v2fun_theme'
@@ -18,6 +19,10 @@ const DEFAULT_THEME: ThemeMode = 'dark'
 const DEFAULT_ACCENT: AccentSlug = 'teal'
 
 function readTheme(): ThemeMode {
+  try {
+    const ls = localStorage.getItem(STORAGE_THEME)
+    if (ls === 'dark' || ls === 'light') return ls
+  } catch { /* private mode etc. */ }
   const attr = typeof document !== 'undefined'
     ? document.documentElement.getAttribute('data-theme')
     : null
@@ -26,6 +31,10 @@ function readTheme(): ThemeMode {
 }
 
 function readAccent(): AccentSlug {
+  try {
+    const ls = localStorage.getItem(STORAGE_ACCENT)
+    if (ls && ACCENTS.some(a => a.slug === ls)) return ls as AccentSlug
+  } catch { /* ignore */ }
   const attr = typeof document !== 'undefined'
     ? document.documentElement.getAttribute('data-accent')
     : null
