@@ -74,6 +74,8 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
+/* Mobile: header uses `justify-content: space-between` so 3 items
+   (logo, tabs, searchBtn) auto-distribute. Desktop overrides this. */
 .searchBtn {
   width: 32px;
   height: 32px;
@@ -82,7 +84,6 @@
   justify-content: center;
   border-radius: var(--radius-sm);
   color: var(--text-secondary);
-  margin-left: auto;
   transition: background 0.15s, color 0.15s;
 }
 
@@ -94,6 +95,13 @@
 @media (hover: hover) {
   .searchBtn:hover {
     color: var(--accent);
+  }
+}
+
+@media (min-width: 960px) {
+  /* Desktop header is `flex-start + gap`, so push searchBtn to the right edge. */
+  .searchBtn {
+    margin-left: auto;
   }
 }
 
