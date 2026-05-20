@@ -187,6 +187,16 @@ export default function Home() {
             style={{ transform: `translateX(${tab === 'latest' ? '100%' : 0})` }}
           />
         </div>
+        <button
+          className={styles.searchBtn}
+          onClick={() => navigate('/search')}
+          aria-label="搜索"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="7" />
+            <line x1="21" y1="21" x2="16.5" y2="16.5" />
+          </svg>
+        </button>
       </header>
 
       {!isDesktop && <PullToRefreshIndicator pullDistance={pullDistance} status={status} />}

@@ -888,6 +888,48 @@ app.get('/web/latest', webReadLimiter, async (req, res) => {
   }
 })
 
+// Topic full-text search via SOV2EX (community third-party index of V2EX).
+// V2EX itself has no public search API; SOV2EX is the de facto one. We proxy
+// to avoid CORS, hide the user's IP, and unify error shape with the rest of /web/*.
+app.get('/web/search', webReadLimiter, async (req, res) => {
+  const q = typeof req.query.q === 'string' ? req.query.q.trim() : ''
+  if (!q) return res.json({ success: false, error: 'empty_query', message: '搜索词不能为空' })
+  if (q.length > 100) return res.json({ success: false, error: 'query_too_long', message: '搜索词过长' })
+
+  const from = Math.max(0, parseInt(req.query.from) || 0)
+  const size = Math.min(20, Math.max(1, parseInt(req.query.size) || 20))
+  const sort = req.query.sort === 'created' ? 'created' : 'sumup'
+  const order = req.query.order === '1' ? '1' : '0'
+
+  const url = new URL('https://www.sov2ex.com/api/search')
+  url.searchParams.set('q', q)
+  url.searchParams.set('from', String(from))
+  url.searchParams.set('size', String(size))
+  url.searchParams.set('sort', sort)
+  url.searchParams.set('order', order)
+
+  const fwd = getForwardHeaders(req)
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 10000)
+  try {
+    const upstream = await fetch(url.toString(), {
+      headers: { 'User-Agent': fwd.userAgent, 'Accept': 'application/json' },
+      signal: controller.signal,
+    })
+    if (!upstream.ok) {
+      console.error(`[web/search] upstream ${upstream.status} for q=${q}`)
+      return res.json({ success: false, error: 'upstream_unavailable', message: `搜索服务异常 (${upstream.status})` })
+    }
+    const data = await upstream.json()
+    res.json({ success: true, total: data.total ?? 0, took: data.took ?? 0, hits: Array.isArray(data.hits) ? data.hits : [] })
+  } catch (err) {
+    console.error('[web/search]', err?.name === 'AbortError' ? 'timeout' : err)
+    res.json({ success: false, error: 'upstream_unavailable', message: '搜索服务暂时不可用，请稍后重试' })
+  } finally {
+    clearTimeout(timer)
+  }
+})
+
 app.get('/web/member/:username/topics', webReadLimiter, async (req, res) => {
   const username = req.params.username
   if (!username) {

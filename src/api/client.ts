@@ -142,4 +142,35 @@ export const web = {
       credentials: 'same-origin',
       body: JSON.stringify({ title, content, nodeName, syntax }),
     }).then(r => r.json()) as Promise<WebResult>,
+
+  searchTopics: (params: { q: string; from?: number; size?: number; sort?: 'sumup' | 'created' }) => {
+    const qs = new URLSearchParams({
+      q: params.q,
+      from: String(params.from ?? 0),
+      size: String(params.size ?? 20),
+      sort: params.sort ?? 'sumup',
+    })
+    return fetch(`/web/search?${qs}`, { credentials: 'same-origin' })
+      .then(readJsonOrFail) as Promise<{ success: boolean; total: number; took: number; hits: SovHit[]; message?: string }>
+  },
+}
+
+export interface SovHit {
+  _id: string
+  _score: number
+  _source: {
+    id: number
+    title: string
+    content: string
+    member: string
+    node: number
+    replies: number
+    created: string
+  }
+  highlight?: {
+    title?: string[]
+    content?: string[]
+    'postscript_list.content'?: string[]
+    'reply_list.content'?: string[]
+  }
 }

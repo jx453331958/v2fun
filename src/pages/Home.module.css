@@ -74,6 +74,29 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
+.searchBtn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  margin-left: auto;
+  transition: background 0.15s, color 0.15s;
+}
+
+.searchBtn:active {
+  background: var(--bg-tertiary);
+  color: var(--accent);
+}
+
+@media (hover: hover) {
+  .searchBtn:hover {
+    color: var(--accent);
+  }
+}
+
 .error {
   display: flex;
   flex-direction: column;

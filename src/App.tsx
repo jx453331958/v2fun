@@ -10,6 +10,7 @@ import Nodes from './pages/Nodes'
 import NodeDetail from './pages/NodeDetail'
 import Notifications from './pages/Notifications'
 import MemberPage from './pages/MemberPage'
+import Search from './pages/Search'
 
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -44,6 +45,7 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/node/:name" element={<NodeDetail />} />
         <Route path="/member/:username" element={<MemberPage />} />
+        <Route path="/search" element={<Search />} />
       </Route>
     </Routes>
     </>
