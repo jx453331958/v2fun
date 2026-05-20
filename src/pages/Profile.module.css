@@ -103,6 +103,58 @@
   line-height: 1.6;
 }
 
+.blockedHint {
+  font-size: 0.78rem;
+  color: var(--text-tertiary);
+  line-height: 1.5;
+}
+
+.blockedList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.blockedChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 4px 4px 10px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.78rem;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+}
+
+.blockedName {
+  line-height: 1;
+}
+
+.blockedRemove {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: var(--text-tertiary);
+  background: transparent;
+  transition: background 0.15s, color 0.15s;
+}
+
+.blockedRemove:active {
+  background: var(--border);
+  color: var(--accent);
+}
+
+@media (hover: hover) {
+  .blockedRemove:hover {
+    color: var(--accent);
+  }
+}
+
 .links {
   display: flex;
   flex-direction: column;

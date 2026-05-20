@@ -10,6 +10,7 @@ import TopicDetail from './TopicDetail'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { useListCache } from '../hooks/useListCache'
 import { useIsDesktop } from '../hooks/useIsDesktop'
+import { useBlockedNodes } from '../hooks/useBlockedNodes'
 import styles from './Home.module.css'
 
 type Tab = 'hot' | 'latest'
@@ -27,6 +28,7 @@ export default function Home() {
   const isDesktop = useIsDesktop()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
+  const { isBlocked } = useBlockedNodes()
 
   const [tab, setTab] = useState<Tab>(cached?.data.tab ?? 'latest')
   const [topics, setTopics] = useState<V2Topic[]>(cached?.data.topics ?? [])
@@ -165,6 +167,11 @@ export default function Home() {
     onRefresh: () => fetchData(tab, page),
   })
 
+  // Filter happens at render time only — `topics` state stays raw so the
+  // tab-switch scroll-restore logic keeps working unchanged.
+  const visibleTopics = topics.filter((t) => !isBlocked(t.node?.name))
+  const allFiltered = topics.length > 0 && visibleTopics.length === 0
+
   const listSection = (
     <>
       <header className={styles.header}>
@@ -221,7 +228,7 @@ export default function Home() {
                 </button>
               </div>
             )}
-            {topics.map((topic) => (
+            {visibleTopics.map((topic) => (
               <TopicCard
                 key={topic.id}
                 topic={topic}
@@ -231,6 +238,9 @@ export default function Home() {
             ))}
             {topics.length === 0 && !error && (
               <div className={styles.empty}>暂无主题</div>
+            )}
+            {allFiltered && (
+              <div className={styles.empty}>当前页主题均被屏蔽,可在「我的」管理</div>
             )}
             <Pagination page={page} totalPages={totalPages} onPageChange={handlePageChange} />
           </div>

@@ -2,12 +2,14 @@ import { useNavigate } from 'react-router-dom'
 import { formatDistanceToNow } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
 import { useAuth } from '../hooks/useAuth'
+import { useBlockedNodes } from '../hooks/useBlockedNodes'
 import Loading from '../components/Loading'
 import ThemeSettings from '../components/ThemeSettings'
 import styles from './Profile.module.css'
 
 export default function Profile() {
   const { member, loading, logout, isLoggedIn } = useAuth()
+  const { blockedNodes, unblockNode } = useBlockedNodes()
   const navigate = useNavigate()
 
   if (loading) return <Loading />
@@ -87,6 +89,31 @@ export default function Profile() {
         </div>
 
         <ThemeSettings />
+
+        <div className={styles.section}>
+          <h3 className={styles.sectionTitle}>已屏蔽节点</h3>
+          {blockedNodes.length === 0 ? (
+            <p className={styles.blockedHint}>长按列表里的节点徽章可屏蔽</p>
+          ) : (
+            <div className={styles.blockedList}>
+              {blockedNodes.map((name) => (
+                <span key={name} className={styles.blockedChip}>
+                  <span className={styles.blockedName}>{name}</span>
+                  <button
+                    className={styles.blockedRemove}
+                    onClick={() => unblockNode(name)}
+                    aria-label={`解除屏蔽 ${name}`}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
 
         <div className={styles.section}>
           <button
