@@ -59,6 +59,10 @@
   --bg-accent: #1A1A28;
   --bg-elevated: #1E1E2A;
 
+  /* 半透明玻璃背景(用于 sticky header / bottom nav / sidebar) */
+  --bg-glass: rgba(11, 11, 16, 0.85);
+  --bg-glass-soft: rgba(11, 11, 16, 0.6);
+
   --text-primary: #E8E8ED;
   --text-secondary: #8F8FA3;
   --text-tertiary: #5A5A6E;
@@ -74,22 +78,25 @@
 }
 
 [data-theme="light"] {
-  --bg-primary: #F7F7FA;
+  --bg-primary: #F4F4F7;
   --bg-secondary: #FFFFFF;
-  --bg-tertiary: #EFEFF4;
-  --bg-accent: #E8E8F0;
+  --bg-tertiary: #E6E6EC;
+  --bg-accent: #DEDEE6;
   --bg-elevated: #FFFFFF;
+
+  --bg-glass: rgba(255, 255, 255, 0.85);
+  --bg-glass-soft: rgba(255, 255, 255, 0.6);
 
   --text-primary: #1A1A24;
   --text-secondary: #5A5A6E;
   --text-tertiary: #8F8FA3;
 
-  --border: rgba(0, 0, 0, 0.08);
-  --border-light: rgba(0, 0, 0, 0.05);
+  --border: rgba(0, 0, 0, 0.10);
+  --border-light: rgba(0, 0, 0, 0.06);
 
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.12);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.10);
 
   color-scheme: light;
 }

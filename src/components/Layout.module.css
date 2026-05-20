@@ -21,7 +21,7 @@
   max-width: var(--max-app-width);
   height: calc(var(--tab-height) + var(--safe-bottom));
   padding-bottom: var(--safe-bottom);
-  background: rgba(11, 11, 16, 0.85);
+  background: var(--bg-glass);
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
   border-top: 1px solid var(--border);
@@ -86,6 +86,12 @@
   box-shadow: var(--glow-accent);
 }
 
+/* light 模式下 accent 半透明 glow 会在浅底上变成脏灰晕,改成普通深色阴影 */
+[data-theme="light"] .createBtn svg,
+[data-theme="light"] .sidebarCreate {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.10);
+}
+
 /* ================================================================
    Desktop layout (>= 960px)
    ================================================================ */
@@ -104,7 +110,7 @@
   flex-direction: column;
   padding: 18px 14px;
   border-right: 1px solid var(--border);
-  background: rgba(11, 11, 16, 0.6);
+  background: var(--bg-glass-soft);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
 }

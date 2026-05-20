@@ -24,6 +24,11 @@
   background: linear-gradient(135deg, var(--accent-glow), var(--accent-light));
 }
 
+/* light 下避免半透明 accent 在白底上变脏色块,改用 solid 弱色 + 顶部到底渐隐 */
+[data-theme="light"] .headerBg {
+  background: linear-gradient(180deg, var(--accent-light), transparent);
+}
+
 .profileCard {
   position: relative;
   display: flex;

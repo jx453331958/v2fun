@@ -165,7 +165,7 @@
   transform: translateX(-50%);
   width: 100%;
   max-width: var(--max-app-width);
-  background: rgba(11, 11, 16, 0.92);
+  background: var(--bg-glass);
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
   border-top: 1px solid var(--border);
