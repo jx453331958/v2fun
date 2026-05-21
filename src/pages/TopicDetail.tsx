@@ -236,6 +236,24 @@ export default function TopicDetail({ topicId: propTopicId, initialFloor, embedd
 
       {!embedded && <PullToRefreshIndicator pullDistance={pullDistance} status={status} />}
 
+      {embedded && (
+        <div className={styles.stickyHeader}>
+          {topic.node && <span className={styles.stickyNode}>{topic.node.title}</span>}
+          <h2 className={styles.stickyTitle}>{topic.title}</h2>
+          <button
+            className={styles.stickyExternalBtn}
+            onClick={openInV2EX}
+            title="在 V2EX 打开"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" />
+              <polyline points="15 3 21 3 21 9" />
+              <line x1="10" y1="14" x2="21" y2="3" />
+            </svg>
+          </button>
+        </div>
+      )}
+
       <div style={embedded ? undefined : pullStyle}>
         <article className={styles.topic}>
           {topic.member && (
@@ -250,19 +268,6 @@ export default function TopicDetail({ topicId: propTopicId, initialFloor, embedd
                 <span className={styles.username}>{topic.member.username}</span>
                 <span className={styles.time}>{timeAgo}</span>
               </div>
-              {embedded && (
-                <button
-                  className={styles.openExternal}
-                  onClick={openInV2EX}
-                  title="在 V2EX 打开"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" />
-                    <polyline points="15 3 21 3 21 9" />
-                    <line x1="10" y1="14" x2="21" y2="3" />
-                  </svg>
-                </button>
-              )}
             </div>
           )}
 

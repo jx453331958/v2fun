@@ -3,10 +3,14 @@
   background: var(--bg-primary);
 }
 
-/* Embedded mode (desktop right pane): flat panel filling the column edge-to-edge
-   (Apple Mail / Notes pattern). The detail column itself draws the hairline
-   against the list column; inner sections cap at a comfortable reading width
-   so wide screens get symmetric gutters instead of an asymmetric floating card. */
+/* Embedded mode (desktop right pane): a bg-secondary panel that fills the
+   detail column. Distinct from the list column (bg-primary) via background
+   shift + a left hairline; every interior section shares one horizontal axis
+   (32px padding). Reading-width control happens at the text level via
+   `.rendered-content { max-width: 72ch }`, not by squeezing sections.
+
+   The --reply-* custom properties cascade into ReplyItem.module.css which
+   reads them with mobile-tight fallbacks (12px / 16px / 28px). */
 .embedded {
   position: relative;
   width: 100%;
@@ -14,44 +18,57 @@
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+  background: var(--bg-secondary);
+  border-left: 1px solid var(--border);
+
+  --reply-vpad: 16px;
+  --reply-hpad: 32px;
+  --reply-avatar-size: 32px;
 }
 
-/* Center every direct child (the topic+replies wrapper) at reading width.
-   Reply bar overrides this back to full width below. */
 .embedded > * {
   width: 100%;
-  max-width: 760px;
-  margin-left: auto;
-  margin-right: auto;
 }
 
-.embedded .repliesSection {
-  padding-bottom: 0;
-  margin-top: 0;
-}
-
-/* Reply bar sticks to the bottom of the panel and spans the full column
-   so its blurred backdrop covers the whole strip, not just the reading column. */
-.embedded .replyBar {
+/* Sticky toolbar at the panel top. Stays put while content scrolls,
+   gives the long thread a persistent anchor for "where am I". */
+.stickyHeader {
   position: sticky;
-  bottom: 0;
-  left: auto;
-  right: auto;
-  transform: none;
-  width: 100%;
-  max-width: 100%;
-  margin-top: auto;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 52px;
+  padding: 0 24px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
 }
 
-/* Pull the textarea + send button back into reading width inside the full-width bar. */
-.embedded .replyInputRow {
-  max-width: 760px;
-  margin-left: auto;
-  margin-right: auto;
+.stickyNode {
+  flex-shrink: 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  padding: 4px 10px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
 }
 
-.openExternal {
-  margin-left: auto;
+.stickyTitle {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.92rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stickyExternalBtn {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -62,9 +79,59 @@
   transition: background 0.15s, color 0.15s;
 }
 
-.openExternal:hover {
+.stickyExternalBtn:hover {
   background: var(--bg-tertiary);
   color: var(--accent);
+}
+
+/* Topic section in embedded mode: bumped padding, larger avatar tier. */
+.embedded .topic {
+  padding: 24px 32px;
+  background: transparent;
+}
+
+.embedded .topic .avatar {
+  width: 40px;
+  height: 40px;
+}
+
+.embedded .topicActions {
+  margin-top: 20px;
+  padding-top: 16px;
+  /* Override mobile's space-between, which puts "6 条回复" at the panel's far
+     right edge — leaves a 1000px void between it and the thank button. */
+  justify-content: flex-start;
+  gap: 20px;
+}
+
+/* Flush with the topic section above — no 6px gap break. */
+.embedded .repliesSection {
+  background: transparent;
+  margin-top: 0;
+  padding-bottom: 0;
+}
+
+/* Reply bar lives inside the panel and shares the panel's bg + 32px hpad.
+   No blur, no glass — it doesn't need to overlay arbitrary content. */
+.embedded .replyBar {
+  position: sticky;
+  bottom: 0;
+  left: auto;
+  right: auto;
+  transform: none;
+  width: 100%;
+  max-width: 100%;
+  margin-top: auto;
+  padding: 12px 32px;
+  background: var(--bg-secondary);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-top: 1px solid var(--border);
+}
+
+.embedded .replyInputRow {
+  max-width: 100%;
+  margin: 0;
 }
 
 .topic {
