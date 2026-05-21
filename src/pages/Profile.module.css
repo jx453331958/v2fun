@@ -248,6 +248,10 @@
     top: 0;
     z-index: 10;
     align-items: center;
+    /* Same shrink protection as TopicDetail.stickyHeader — Profile.page is
+     a flex column on desktop, so without this the header can be compressed
+     when content overflows. */
+    flex-shrink: 0;
     height: var(--header-height);
     padding: 0 32px;
     background: var(--bg-glass);
