@@ -105,7 +105,10 @@ export function usePasteUpload({ textareaRef, setValue, setValueRaw }: UsePasteU
       const res = await web.uploadImage(file)
       if (res.success && res.url) {
         const fullUrl = `${window.location.origin}${res.url}`
-        replaceInValue(setValueRef.current, placeholder, `\n${fullUrl}\n`)
+        // V2EX 只对白名单域名（imgur 等）的裸 URL 自动转图；我们用 ![](url)
+        // 让 V2EX 主题（Markdown 模式）和未来的 v2fun 自渲染层都能识别为图。
+        // 回复里 V2EX 不解析 Markdown，会显示为字面字符串——已是 V2EX 系统限制。
+        replaceInValue(setValueRef.current, placeholder, `\n![](${fullUrl})\n`)
       } else {
         const msg = errorMessage(res.error)
         replaceInValue(setValueRef.current, placeholder, `\n${msg}\n`)

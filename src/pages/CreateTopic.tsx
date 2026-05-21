@@ -1,14 +1,17 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { MdEditor } from 'md-editor-rt'
+import 'md-editor-rt/lib/style.css'
 import { v1, web } from '../api/client'
 import type { V2Node } from '../types'
 import { useAuth } from '../hooks/useAuth'
-import { usePasteUpload } from '../hooks/usePasteUpload'
+import { useTheme } from '../hooks/useTheme'
 import Header from '../components/Header'
 import styles from './CreateTopic.module.css'
 
 export default function CreateTopic() {
   const { isLoggedIn } = useAuth()
+  const { theme } = useTheme()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
 
@@ -17,10 +20,8 @@ export default function CreateTopic() {
   const [nodeInput, setNodeInput] = useState(prefilledNode)
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
-  const [syntax, setSyntax] = useState('default')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   const [allNodes, setAllNodes] = useState<V2Node[]>([])
@@ -52,19 +53,20 @@ export default function CreateTopic() {
     setShowDropdown(false)
   }
 
-  const { onPaste } = usePasteUpload({
-    textareaRef,
-    setValue: (updater) => setContent(updater),
-    setValueRaw: (next) => setContent(next),
-  })
-
-  // Auto-expand textarea
-  useEffect(() => {
-    const el = textareaRef.current
-    if (!el) return
-    el.style.height = 'auto'
-    el.style.height = Math.max(120, el.scrollHeight) + 'px'
-  }, [content])
+  // md-editor-rt 在 paste/拖图/工具栏上传图片时调此回调；我们转给后端的 /web/upload-image
+  // 并把返回的 URL 喂回编辑器，它会自动插入 ![](url) 到光标位置。
+  const onUploadImg = async (files: File[], callback: (urls: string[]) => void) => {
+    const results: string[] = []
+    for (const file of files) {
+      try {
+        const res = await web.uploadImage(file)
+        if (res.success && res.url) {
+          results.push(`${window.location.origin}${res.url}`)
+        }
+      } catch { /* 单张失败跳过，其余继续 */ }
+    }
+    callback(results)
+  }
 
   const handleSubmit = async () => {
     if (!title.trim()) {
@@ -78,7 +80,8 @@ export default function CreateTopic() {
     setError('')
     setSubmitting(true)
     try {
-      const res = await web.createTopic(title.trim(), content, nodeName.trim(), syntax)
+      // 永远以 Markdown 提交；V2EX 的 default 模式不解析 ![](url) 图片语法
+      const res = await web.createTopic(title.trim(), content, nodeName.trim(), 'markdown')
       if (res.success && res.topicId) {
         navigate(`/topic/${res.topicId}`, { replace: true })
       } else {
@@ -166,35 +169,17 @@ export default function CreateTopic() {
 
         <div className={styles.field}>
           <label className={styles.label}>正文</label>
-          <textarea
-            ref={textareaRef}
-            className={styles.textarea}
-            placeholder="正文内容（可选）"
+          <MdEditor
             value={content}
-            onChange={e => setContent(e.target.value)}
-            disabled={submitting}
-            onPaste={onPaste}
+            onChange={setContent}
+            onUploadImg={onUploadImg}
+            theme={theme}
+            language="zh-CN"
+            placeholder="支持 Markdown；直接 Cmd+V 粘贴图片可自动上传"
+            preview={false}
+            toolbarsExclude={['github', 'save', 'mermaid', 'katex', 'sub', 'sup', 'task']}
+            footers={['markdownTotal', 'scrollSwitch']}
           />
-        </div>
-
-        <div className={styles.field}>
-          <label className={styles.label}>格式</label>
-          <div className={styles.syntaxToggle}>
-            <button
-              className={`${styles.syntaxBtn} ${syntax === 'default' ? styles.syntaxActive : ''}`}
-              onClick={() => setSyntax('default')}
-              disabled={submitting}
-            >
-              Default
-            </button>
-            <button
-              className={`${styles.syntaxBtn} ${syntax === 'markdown' ? styles.syntaxActive : ''}`}
-              onClick={() => setSyntax('markdown')}
-              disabled={submitting}
-            >
-              Markdown
-            </button>
-          </div>
         </div>
 
         {error && <div className={styles.error}>{error}</div>}

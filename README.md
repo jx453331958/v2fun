@@ -183,11 +183,23 @@ V2Fun 后端是一个轻量代理服务器，将前端请求转发到 V2EX 官�
 
 ## 启用图片粘贴上传（可选）
 
-V2Fun 支持在发主题和回帖的输入框里 `Cmd+V` 直接粘贴图片，自动上传并把链接（V2EX 可识别的 URL）插到光标处。此功能依赖 Telegram Bot，不配置则功能关闭（粘贴图片不会触发任何动作）。
+V2Fun 支持在发主题和回帖的输入框里 `Cmd+V` 直接粘贴图片，自动上传并把 `![](url)` 插到光标处。此功能依赖 Telegram Bot，不配置则功能关闭（粘贴图片不会触发任何动作）。
 
 ### 为什么是 Telegram Bot
 
-2025 年大多数"完全免注册"匿名图床（Telegraph / catbox / 0x0.st 等）已被关停或限制。Telegram Bot 是仍然免费可用、且全球 CDN 稳定的方案。token 仅存在你后端，图片对外暴露的是 `https://<your-domain>/img/<file_id>` 短链接，浏览者看不到 token。
+2025 年大多数"完全免注册"匿名图床（Telegraph / catbox / 0x0.st 等）已被关停或限制；imgur 对数据中心 IP 段限频，从云服务器上传不稳。Telegram Bot 是仍然免费可用、且全球 CDN 稳定的方案。token 仅存在你后端，图片对外暴露的是 `https://<your-domain>/img/<file_id>` 短链接，浏览者看不到 token。
+
+### V2EX 渲染说明（必读）
+
+由于 V2EX 服务端图片自动渲染只认 imgur/i.v2ex.co 域名白名单，**`![](https://your-domain/img/...)` 在 V2EX 上的渲染行为如下**：
+
+| 场景 | V2EX 渲染 |
+|---|---|
+| 主题（默认 Markdown 模式提交）| ✅ 渲染为 `<img>` 图片 |
+| 主题（旧的 default 模式）| 字面字符串显示（v2fun 客户端已强制提交 markdown 模式，原生 V2EX 网页发帖如手动选 default 才会触达此情况）|
+| 回复 | ❌ 字面字符串（V2EX 回复不解析 Markdown）|
+
+如果未来需要让回复里的图也能显示成图，可在 v2fun 客户端的渲染层（`src/utils/sanitize.ts` 之后）识别同主机 `/img/` 链接转 `<img>`——只在 v2fun 内生效，原生 V2EX 仍是链接。
 
 ### 配置步骤
 

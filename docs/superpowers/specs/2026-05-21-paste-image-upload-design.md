@@ -209,3 +209,44 @@ README 新增章节"启用图片粘贴上传（可选）"，内容大致：
 4. 两处 textarea 接入
 5. README 章节
 6. 端到端自测 → 提交 → 部署 → 生产验证
+
+---
+
+## 修订 R1（2026-05-21，部署当晚）
+
+**已实施且生效的部分**：§3 架构、§4 文件清单、§5 接口契约、§6 数据流、§7 错误处理矩阵、§8 安全模型——全部按 spec 落地，prod 验证通过。
+
+**沿途发现并修正的部署陷阱**：
+- `v2fun.sh do_update` 会重写 docker-compose.yml，清空用户自加的 env。改用 `env_file: .env_user` 模式（v2fun.sh 自动生成空 `.env_user` 600 权限），自定义 env 在 update 中保留
+- vite dev 漏了 `/img/*` proxy，会被 SPA fallback 拿到 HTML。vite.config.ts 加 proxy 规则
+
+**§2 决策表的两条被实测推翻**：
+
+| 原决策 | 真实情况 |
+|---|---|
+| "插入字符串：`\n<url>\n`（裸 URL 单独一行）" 理由："V2EX 主题（不管开没开 MD）+ 回复都会自动渲染成图片" | ❌ 完全错误。V2EX 自动 URL → img 只认**白名单域名**（`imgur.com` / `i.imgur.com` / `i.v2ex.co`），**不看后缀，不看是否单独成行**。我们的 `v2fun.ohminicat.com` 不在白名单。 |
+| "302 重定向方案" 中假设 token 隐藏代价可接受 | ✅ 决策本身没变；但 URL 形式从裸 URL 改为 `![](url)` 后，token 仍只暴露在 302 Location 头 |
+
+**改正后的决策（R1）**：
+
+| 项 | 改后 |
+|---|---|
+| 插入字符串 | `\n![](<url>)\n` Markdown 图片语法 |
+| 主题提交 syntax | **永远 `markdown`**（删除 default/markdown 切换按钮）|
+| CreateTopic 正文输入 | 用 **md-editor-rt** 替换原生 textarea；通过其 `onUploadImg` 接到 `/web/upload-image`，编辑器内部 paste/拖图/工具栏上传统一走该回调 |
+| TopicDetail 回复输入 | 保留原生 textarea + `usePasteUpload` hook（回复框小，不放 markdown 编辑器）|
+
+**V2EX 渲染兼容矩阵**（实测）：
+
+| 场景 | 渲染结果 |
+|---|---|
+| 主题（v2fun 客户端发，永远 markdown）| ✅ `<img>` |
+| 主题（原生 V2EX 网页发，用户手动选 default）| ❌ 字面字符串 |
+| 回复（V2EX 不解析 Markdown）| ❌ 字面字符串 |
+
+**为什么不切到 imgur**：调研显示 imgur 对数据中心/云 IP 段长期限频（`429 Imgur is temporarily over capacity` 由 Fastly 边缘直接返回，与 Client-ID 无关）。prod IPv4 实测同样被限。切换无意义。
+
+**未来工作（不在本次范围）**：
+- 如果想让回复里的图也能显示，需要 v2fun 客户端在 `sanitize.ts` 之后加一层渲染层处理：识别同主机 `/img/` 链接转 `<img>`。只在 v2fun 内生效。
+
+**新增依赖**：`md-editor-rt@^6.5.0`（含 CodeMirror 6 内核，~200KB gzip，仅在 /create 路由加载——目前未做懒加载，按需可加）
