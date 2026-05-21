@@ -1,4 +1,6 @@
+import { useContext } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
+import { UrlLocationContext } from '../App'
 import { useAuth } from '../hooks/useAuth'
 import { useIsDesktop } from '../hooks/useIsDesktop'
 import styles from './Layout.module.css'
@@ -48,10 +50,34 @@ const ICONS = {
 export default function Layout() {
   const { isLoggedIn, member } = useAuth()
   const navigate = useNavigate()
-  const location = useLocation()
-  const { pathname } = location
-  const activeTab = getActiveTab(pathname)
+  // useLocation() here returns the BACKGROUND location when Profile modal is
+  // open (App wraps <Routes> with location={backgroundLocation ?? location}).
+  // For sidebar-tab highlighting we want the *real* URL — read it from the
+  // App-provided context which is set to the un-overridden location.
+  const routerLocation = useLocation()
+  const urlLocation = useContext(UrlLocationContext) ?? routerLocation
+  const activeTab = getActiveTab(urlLocation.pathname)
   const isDesktop = useIsDesktop()
+
+  // Desktop: open /profile as a floating modal on top of the current page
+  // rather than navigating away. App.tsx watches for state.background and
+  // renders ProfileModal. Shared between the sidebar nav "我的" button and
+  // the bottom-left avatar button so they behave identically — both must
+  // capture the current URL as background (otherwise the modal sits on top
+  // of a fake Home page), and both must avoid stacking /profile on /profile
+  // if clicked while the modal is already open.
+  const openProfile = () => {
+    const path = isLoggedIn ? '/profile' : '/login'
+    if (path !== '/profile') {
+      navigate(path)
+      return
+    }
+    const currentBg = (urlLocation.state as { background?: typeof urlLocation } | null)?.background
+    const bg = urlLocation.pathname === '/profile'
+      ? currentBg ?? { pathname: '/', search: '', hash: '', state: null, key: 'profile-default-bg' }
+      : urlLocation
+    navigate(path, { state: { background: bg } })
+  }
 
   if (isDesktop) {
     const navItems = [
@@ -77,17 +103,8 @@ export default function Layout() {
                 key={item.key}
                 className={`${styles.sidebarItem} ${activeTab === item.key ? styles.sidebarItemActive : ''}`}
                 onClick={() => {
-                  // Desktop: open /profile as a floating modal on top of the
-                  // current page rather than navigating away. App.tsx watches
-                  // for state.background and renders ProfileModal.
-                  // Avoid stacking /profile on top of /profile if the user
-                  // clicks "我的" while the modal is already open.
-                  if (item.path === '/profile') {
-                    const currentBg = (location.state as { background?: typeof location } | null)?.background
-                    const bg = location.pathname === '/profile'
-                      ? currentBg ?? { pathname: '/', search: '', hash: '', state: null, key: 'profile-default-bg' }
-                      : location
-                    navigate(item.path, { state: { background: bg } })
+                  if (item.key === 'profile') {
+                    openProfile()
                   } else {
                     navigate(item.path)
                   }
@@ -110,7 +127,7 @@ export default function Layout() {
           {isLoggedIn && member && (
             <button
               className={styles.sidebarUser}
-              onClick={() => navigate('/profile')}
+              onClick={openProfile}
             >
               <img
                 className={styles.sidebarUserAvatar}
