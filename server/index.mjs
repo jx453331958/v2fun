@@ -5,6 +5,8 @@ import path from 'path'
 import fs from 'fs'
 import crypto from 'crypto'
 import rateLimit from 'express-rate-limit'
+import multer from 'multer'
+import * as imageHost from './imageHost.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const app = express()
@@ -334,6 +336,20 @@ app.get('/auth/passcode-status', (req, res) => {
   res.json({ verified: verifyPasscodeCookie(req) })
 })
 
+// 图片浏览代理：不需要 passcode（V2EX 帖子里的 <img> 加载会触发此路径，
+// 任何浏览者都得能读）。token 通过 302 Location 头流向客户端 — 这是与
+// "完全藏 token" 的取舍，详见 spec §2 决策表。
+app.get('/img/:fileId', async (req, res) => {
+  if (!imageHost.isEnabled()) return res.status(404).end()
+  try {
+    const downloadUrl = await imageHost.resolve(req.params.fileId)
+    res.redirect(302, downloadUrl)
+  } catch (err) {
+    console.error('[img]', err.message)
+    res.status(404).end()
+  }
+})
+
 // Passcode protection middleware — block API/web/auth routes without valid passcode
 app.use((req, res, next) => {
   // Skip passcode endpoints themselves
@@ -423,6 +439,26 @@ const webWriteLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: '操作过于频繁，请稍后重试' },
+})
+
+const uploadLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 min
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'rate_limited' },
+})
+
+const ALLOWED_IMAGE_MIMES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif'])
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024
+
+const uploadMulter = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_IMAGE_BYTES, files: 1 },
+  fileFilter: (_req, file, cb) => {
+    if (ALLOWED_IMAGE_MIMES.has(file.mimetype)) cb(null, true)
+    else cb(null, false) // 不抛错，进 handler 后 req.file 会是 undefined
+  },
 })
 
 /** Parse V2EX time string to Unix timestamp */
@@ -859,6 +895,42 @@ app.get('/web/node/:nodeName', webReadLimiter, async (req, res) => {
     console.error('[web/node]', err)
     res.json({ success: false, error: 'upstream_unavailable', message: '上游请求失败，请稍后重试' })
   }
+})
+
+app.get('/web/upload-capability', (_req, res) => {
+  if (!imageHost.isEnabled()) {
+    return res.json({ success: true, enabled: false })
+  }
+  res.json({
+    success: true,
+    enabled: true,
+    maxSizeBytes: MAX_IMAGE_BYTES,
+    mimes: Array.from(ALLOWED_IMAGE_MIMES),
+  })
+})
+
+app.post('/web/upload-image', uploadLimiter, uploadMulter.single('file'), async (req, res) => {
+  if (!imageHost.isEnabled()) {
+    return res.json({ success: false, error: 'host_disabled' })
+  }
+  if (!req.file) {
+    return res.json({ success: false, error: 'invalid_mime' })
+  }
+  try {
+    const fileId = await imageHost.upload(req.file.buffer, req.file.mimetype)
+    res.json({ success: true, url: `/img/${encodeURIComponent(fileId)}` })
+  } catch (err) {
+    console.error('[web/upload-image]', err.message)
+    res.json({ success: false, error: 'upstream_failed' })
+  }
+})
+
+// multer 错误处理（fileSize 超 → MulterError），仅作用于此路由
+app.use('/web/upload-image', (err, _req, res, _next) => {
+  if (err?.code === 'LIMIT_FILE_SIZE') {
+    return res.json({ success: false, error: 'file_too_large' })
+  }
+  return res.json({ success: false, error: 'upstream_failed' })
 })
 
 app.get('/web/hot', webReadLimiter, async (req, res) => {
