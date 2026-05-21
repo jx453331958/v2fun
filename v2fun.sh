@@ -100,6 +100,19 @@ require_installed() {
 
 generate_compose() {
   local port="$1"
+  # .env_user 是给用户放可选 env 的（如 TG_BOT_TOKEN / TG_CHAT_ID 用于图床功能）。
+  # 这个脚本会重写 docker-compose.yml 但永远不动 .env_user，所以用户自定义
+  # env 能在 update 中保留。文件不存在时先创建一个空的，避免 compose 报错。
+  if [ ! -f "$INSTALL_DIR/.env_user" ]; then
+    cat > "$INSTALL_DIR/.env_user" <<ENV
+# 用户自定义环境变量，本文件不会被 v2fun.sh 覆盖。
+# 例：启用 Telegram Bot 图床（README "启用图片粘贴上传" 一节）
+# TG_BOT_TOKEN=
+# TG_CHAT_ID=
+ENV
+    chmod 600 "$INSTALL_DIR/.env_user"
+  fi
+
   cat > "$INSTALL_DIR/docker-compose.yml" <<YAML
 services:
   v2fun:
@@ -108,6 +121,8 @@ services:
       - "${port}:3210"
     volumes:
       - v2fun-data:/app/data
+    env_file:
+      - .env_user
     environment:
       - NODE_ENV=production
       - PORT=3210

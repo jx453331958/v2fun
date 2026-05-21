@@ -194,12 +194,14 @@ V2Fun 支持在发主题和回帖的输入框里 `Cmd+V` 直接粘贴图片，�
 1. Telegram 找 `@BotFather` 建一个 bot，记下 `TG_BOT_TOKEN`（形如 `123456:ABC-DEF...`）
 2. 建一个 Telegram **私有**频道，把刚才的 bot 加进去并设为管理员（只勾"发送消息"权限即可）
 3. 在频道里发条任意消息，把这条消息转发到 `@userinfobot`，拿到频道 `chat_id`（形如 `-1001234567890`，**负号开头**）
-4. 在 `.env`（或 `docker-compose.yml` 的 `environment` 段）加：
+4. 编辑 `docker-compose.yml` 同目录下的 `.env_user` 文件（首次跑 `v2fun.sh` 后自动生成），填入：
    ```env
    TG_BOT_TOKEN=123456:ABC-DEF...
    TG_CHAT_ID=-1001234567890
    ```
-5. 重启容器（`bash v2fun.sh update` 或 `docker compose restart`）
+5. 重启容器：`docker compose up -d`（或 `bash v2fun.sh update` 拉新镜像顺带重启）
+
+> `v2fun.sh update` 每次会重写 `docker-compose.yml`，但**不会动** `.env_user`，所以填到 `.env_user` 的配置在更新中能持久保留。如果你直接改 `docker-compose.yml` 加 env，下次 update 会被清空。
 
 ### 限制
 
