@@ -14,6 +14,10 @@
 .embedded {
   position: relative;
   width: 100%;
+  /* flex:1 让 .embedded 撑满父 .detailColumn(flex column, 100dvh)。
+     没有它,内容短时(如无回复),.embedded 只有内容高度,
+     replyBar 的 margin-top:auto 会贴在内容底而不是面板底。 */
+  flex: 1;
   min-height: 0;
   overflow-y: auto;
   display: flex;
