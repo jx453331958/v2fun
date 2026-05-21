@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { v1, web } from '../api/client'
 import type { V2Node } from '../types'
 import { useAuth } from '../hooks/useAuth'
+import { usePasteUpload } from '../hooks/usePasteUpload'
 import Header from '../components/Header'
 import styles from './CreateTopic.module.css'
 
@@ -50,6 +51,12 @@ export default function CreateTopic() {
     setNodeInput(`${node.title} - ${node.name}`)
     setShowDropdown(false)
   }
+
+  const { onPaste } = usePasteUpload({
+    textareaRef,
+    setValue: (updater) => setContent(updater),
+    setValueRaw: (next) => setContent(next),
+  })
 
   // Auto-expand textarea
   useEffect(() => {
@@ -166,6 +173,7 @@ export default function CreateTopic() {
             value={content}
             onChange={e => setContent(e.target.value)}
             disabled={submitting}
+            onPaste={onPaste}
           />
         </div>
 
