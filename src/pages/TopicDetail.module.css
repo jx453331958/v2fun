@@ -3,29 +3,26 @@
   background: var(--bg-primary);
 }
 
-/* Embedded mode (desktop right pane): a card floating in the detail column,
-   own scroll container, sticky reply bar pinned to the card's bottom. */
+/* Embedded mode (desktop right pane): flat panel filling the column edge-to-edge
+   (Apple Mail / Notes pattern). The detail column itself draws the hairline
+   against the list column; inner sections cap at a comfortable reading width
+   so wide screens get symmetric gutters instead of an asymmetric floating card. */
 .embedded {
   position: relative;
   width: 100%;
-  /* Local override of --desktop-content-max (920px). The 920 limit is great
-     for single-column pages like Profile/Member but leaves a big asymmetric
-     gutter in this two-column desktop view on 1920+ screens.
-     1400 keeps the four-edge gap equal up through ~2560 displays while
-     still capping line length on naked 4K. */
-  max-width: 1400px;
   min-height: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
 }
 
+/* Center every direct child (the topic+replies wrapper) at reading width.
+   Reply bar overrides this back to full width below. */
 .embedded > * {
   width: 100%;
+  max-width: 760px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .embedded .repliesSection {
@@ -33,6 +30,8 @@
   margin-top: 0;
 }
 
+/* Reply bar sticks to the bottom of the panel and spans the full column
+   so its blurred backdrop covers the whole strip, not just the reading column. */
 .embedded .replyBar {
   position: sticky;
   bottom: 0;
@@ -42,6 +41,13 @@
   width: 100%;
   max-width: 100%;
   margin-top: auto;
+}
+
+/* Pull the textarea + send button back into reading width inside the full-width bar. */
+.embedded .replyInputRow {
+  max-width: 760px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .openExternal {

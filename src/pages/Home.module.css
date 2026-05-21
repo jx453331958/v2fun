@@ -169,8 +169,7 @@
   min-width: 0;
   overflow: hidden;
   display: flex;
-  justify-content: center;
-  padding: 24px;
+  flex-direction: column;
 }
 
 .detailEmpty {
