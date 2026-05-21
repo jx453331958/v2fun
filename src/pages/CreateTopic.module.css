@@ -9,6 +9,20 @@
   margin: 0 auto;
 }
 
+/* 编辑长文需要更宽的画布；桌面端把整个表单放宽，
+   节点/标题等窄字段不受影响，编辑器自然拉伸。 */
+@media (min-width: 960px) {
+  .form {
+    max-width: 1000px;
+  }
+}
+
+/* MdEditor 的最小高度，让长文有足够编辑空间 */
+.editorWrap :global(.md-editor),
+.editorWrap :global(.md-editor-dark) {
+  min-height: 520px;
+}
+
 .field {
   margin-bottom: 16px;
 }

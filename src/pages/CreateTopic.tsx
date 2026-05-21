@@ -6,12 +6,14 @@ import { v1, web } from '../api/client'
 import type { V2Node } from '../types'
 import { useAuth } from '../hooks/useAuth'
 import { useTheme } from '../hooks/useTheme'
+import { useIsDesktop } from '../hooks/useIsDesktop'
 import Header from '../components/Header'
 import styles from './CreateTopic.module.css'
 
 export default function CreateTopic() {
   const { isLoggedIn } = useAuth()
   const { theme } = useTheme()
+  const isDesktop = useIsDesktop()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
 
@@ -167,7 +169,7 @@ export default function CreateTopic() {
           />
         </div>
 
-        <div className={styles.field}>
+        <div className={`${styles.field} ${styles.editorWrap}`}>
           <label className={styles.label}>正文</label>
           <MdEditor
             value={content}
@@ -176,8 +178,13 @@ export default function CreateTopic() {
             theme={theme}
             language="zh-CN"
             placeholder="支持 Markdown；直接 Cmd+V 粘贴图片可自动上传"
-            preview={false}
-            toolbarsExclude={['github', 'save', 'mermaid', 'katex', 'sub', 'sup', 'task']}
+            preview={isDesktop}
+            toolbarsExclude={[
+              'github', 'save', 'mermaid', 'katex',
+              'sub', 'sup', 'task',
+              // 保留 'preview' 作为切换开关；多个预览模式按钮挤工具栏不必要
+              'previewOnly', 'htmlPreview', 'catalog',
+            ]}
             footers={['markdownTotal', 'scrollSwitch']}
           />
         </div>
