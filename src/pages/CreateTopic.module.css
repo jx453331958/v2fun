@@ -140,6 +140,27 @@
   cursor: not-allowed;
 }
 
+.discardBtn {
+  width: 100%;
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-tertiary);
+  font-size: 0.84rem;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+
+.discardBtn:hover {
+  color: var(--danger);
+  background: var(--danger-light);
+}
+
+.discardBtn:active {
+  opacity: 0.8;
+}
+
 .loginPrompt {
   display: flex;
   flex-direction: column;
