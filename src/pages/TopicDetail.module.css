@@ -30,8 +30,10 @@
   width: 100%;
 }
 
-/* Sticky toolbar at the panel top. Stays put while content scrolls,
-   gives the long thread a persistent anchor for "where am I". */
+/* Sticky toolbar at the panel top. Matches the list column's .header chrome
+   (same height, same bg-glass + blur) so the two sit on one continuous
+   horizontal strip across the viewport. Inner 32px hpad keeps the chip
+   aligned with the topic/replies/bar axis below. */
 .stickyHeader {
   position: sticky;
   top: 0;
@@ -39,9 +41,11 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  height: 52px;
-  padding: 0 24px;
-  background: var(--bg-secondary);
+  height: var(--header-height);
+  padding: 0 32px;
+  background: var(--bg-glass);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
   border-bottom: 1px solid var(--border);
 }
 
