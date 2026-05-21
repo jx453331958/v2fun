@@ -13,6 +13,7 @@ import ConfirmDialog from '../components/ConfirmDialog'
 import { useAuth } from '../hooks/useAuth'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { useCodeBlockCopy } from '../hooks/useCodeBlockCopy'
+import { usePasteUpload } from '../hooks/usePasteUpload'
 import { sanitizeHtml } from '../utils/sanitize'
 import styles from './TopicDetail.module.css'
 
@@ -54,6 +55,12 @@ export default function TopicDetail({ topicId: propTopicId, initialFloor, embedd
   const topicBodyRef = useRef<HTMLDivElement>(null)
 
   useCodeBlockCopy(topicBodyRef, [topic?.content_rendered])
+
+  const { onPaste: onReplyPaste } = usePasteUpload({
+    textareaRef,
+    setValue: (updater) => setReplyContent(updater),
+    setValueRaw: (next) => setReplyContent(next),
+  })
 
   const scrollToTop = useCallback(() => {
     if (embedded && containerRef.current) {
@@ -341,6 +348,7 @@ export default function TopicDetail({ topicId: propTopicId, initialFloor, embedd
                 el.style.height = Math.min(el.scrollHeight, 120) + 'px'
               }}
               disabled={submitting}
+              onPaste={onReplyPaste}
             />
             <button
               className={styles.sendBtn}
