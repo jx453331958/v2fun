@@ -153,7 +153,7 @@ export default function MemberPage() {
 
       <PullToRefreshIndicator pullDistance={pullDistance} status={status} />
 
-      <div style={pullStyle}>
+      <div className={styles.body} style={pullStyle}>
         <div className={styles.profile}>
           <div className={styles.avatar}>
             <img src={member.avatar_large || member.avatar} alt={member.username} />

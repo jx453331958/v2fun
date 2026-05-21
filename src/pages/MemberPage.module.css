@@ -3,13 +3,6 @@
   background: var(--bg-primary);
 }
 
-@media (min-width: 960px) {
-  .page {
-    max-width: var(--desktop-content-max);
-    margin: 0 auto;
-  }
-}
-
 .profile {
   display: flex;
   gap: 14px;
@@ -80,4 +73,21 @@
   text-align: center;
   color: var(--text-tertiary);
   font-size: 0.88rem;
+}
+
+/* ────────────────────────────────────────────────────────────────
+   Desktop (>= 960): fills .desktopMain instead of floating as a 920
+   centered column. Left hairline anchors it against the sidebar so it
+   reads as part of the system rather than a stranded card. Inner body
+   caps at 880 left-aligned — TopicCards stay readable on 4K without
+   the whole panel feeling like an empty stretched plain.
+   ──────────────────────────────────────────────────────────────── */
+@media (min-width: 960px) {
+  .page {
+    border-left: 1px solid var(--border);
+  }
+
+  .body {
+    max-width: 880px;
+  }
 }

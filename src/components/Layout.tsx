@@ -48,7 +48,8 @@ const ICONS = {
 export default function Layout() {
   const { isLoggedIn, member } = useAuth()
   const navigate = useNavigate()
-  const { pathname } = useLocation()
+  const location = useLocation()
+  const { pathname } = location
   const activeTab = getActiveTab(pathname)
   const isDesktop = useIsDesktop()
 
@@ -75,7 +76,22 @@ export default function Layout() {
               <button
                 key={item.key}
                 className={`${styles.sidebarItem} ${activeTab === item.key ? styles.sidebarItemActive : ''}`}
-                onClick={() => navigate(item.path)}
+                onClick={() => {
+                  // Desktop: open /profile as a floating modal on top of the
+                  // current page rather than navigating away. App.tsx watches
+                  // for state.background and renders ProfileModal.
+                  // Avoid stacking /profile on top of /profile if the user
+                  // clicks "我的" while the modal is already open.
+                  if (item.path === '/profile') {
+                    const currentBg = (location.state as { background?: typeof location } | null)?.background
+                    const bg = location.pathname === '/profile'
+                      ? currentBg ?? { pathname: '/', search: '', hash: '', state: null, key: 'profile-default-bg' }
+                      : location
+                    navigate(item.path, { state: { background: bg } })
+                  } else {
+                    navigate(item.path)
+                  }
+                }}
               >
                 {ICONS[item.key as keyof typeof ICONS]}
                 <span>{item.label}</span>

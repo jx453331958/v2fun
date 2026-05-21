@@ -86,6 +86,12 @@
   font-size: 0.78rem;
   color: var(--text-secondary);
   text-decoration: none;
+  /* Reset button defaults so the 我的主题 button visually matches the
+     external <a> siblings. */
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
 }
 
 .identityLink svg {
@@ -181,49 +187,38 @@
   }
 }
 
-/* ── Actions section (我的主题 / 退出登录) ───────────────────── */
-.actionItem {
+/* ── Logout section (standalone — state-changing, set apart from info nav) ── */
+.logoutSection {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  margin-bottom: 10px;
+}
+
+.logoutBtn {
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: center;
+  gap: 8px;
   width: 100%;
-  padding: 10px 0;
+  padding: 14px;
   font-size: 0.88rem;
-  color: var(--text-primary);
+  font-weight: 500;
+  color: var(--danger);
   background: none;
   border: none;
-  text-align: left;
+  border-radius: var(--radius-md);
+  transition: background 0.15s;
 }
 
-.actionItem + .actionItem {
-  border-top: 1px solid var(--border);
+.logoutBtn:active {
+  background: var(--danger-light);
 }
 
-.actionIcon {
-  color: var(--text-tertiary);
-  flex-shrink: 0;
-}
-
-.actionLabel {
-  flex: 1;
-  text-align: left;
-}
-
-.actionArrow {
-  color: var(--text-tertiary);
-  flex-shrink: 0;
-}
-
-.actionDanger {
-  color: var(--danger);
-}
-
-.actionDanger .actionIcon {
-  color: var(--danger);
-}
-
-.actionItem:active {
-  opacity: 0.7;
+@media (hover: hover) {
+  .logoutBtn:hover {
+    background: var(--danger-light);
+  }
 }
 
 .version {
@@ -307,7 +302,8 @@
   }
 
   /* Every section is a transparent stripe separated by hairlines. */
-  .section {
+  .section,
+  .logoutSection {
     background: transparent;
     border: none;
     border-radius: 0;
@@ -316,8 +312,22 @@
     padding: 22px 32px;
   }
 
-  .section:last-of-type {
+  .section:last-of-type,
+  .logoutSection:last-of-type {
     border-bottom: none;
+  }
+
+  /* Logout button left-aligns on desktop (no longer a centered card-button). */
+  .logoutBtn {
+    width: auto;
+    justify-content: flex-start;
+    padding: 0;
+  }
+
+  .logoutBtn:active,
+  .logoutBtn:hover {
+    background: none;
+    opacity: 0.75;
   }
 
   .version {

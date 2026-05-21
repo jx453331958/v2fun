@@ -30,6 +30,9 @@ export default function Nodes() {
     <div className={styles.page}>
       <div className={styles.header}>
         <h1 className={styles.title}>节点</h1>
+      </div>
+
+      <div className={styles.searchBar}>
         <div className={styles.searchWrap}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="11" cy="11" r="8" />
