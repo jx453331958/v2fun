@@ -181,6 +181,37 @@ V2Fun 后端是一个轻量代理服务器，将前端请求转发到 V2EX 官�
 
 > 建议生产环境通过 Nginx/Caddy 等反向代理添加 HTTPS，以确保 Cookie 和 Token 传输加密。
 
+## 启用图片粘贴上传（可选）
+
+V2Fun 支持在发主题和回帖的输入框里 `Cmd+V` 直接粘贴图片，自动上传并把链接（V2EX 可识别的 URL）插到光标处。此功能依赖 Telegram Bot，不配置则功能关闭（粘贴图片不会触发任何动作）。
+
+### 为什么是 Telegram Bot
+
+2025 年大多数"完全免注册"匿名图床（Telegraph / catbox / 0x0.st 等）已被关停或限制。Telegram Bot 是仍然免费可用、且全球 CDN 稳定的方案。token 仅存在你后端，图片对外暴露的是 `https://<your-domain>/img/<file_id>` 短链接，浏览者看不到 token。
+
+### 配置步骤
+
+1. Telegram 找 `@BotFather` 建一个 bot，记下 `TG_BOT_TOKEN`（形如 `123456:ABC-DEF...`）
+2. 建一个 Telegram **私有**频道，把刚才的 bot 加进去并设为管理员（只勾"发送消息"权限即可）
+3. 在频道里发条任意消息，把这条消息转发到 `@userinfobot`，拿到频道 `chat_id`（形如 `-1001234567890`，**负号开头**）
+4. 在 `.env`（或 `docker-compose.yml` 的 `environment` 段）加：
+   ```env
+   TG_BOT_TOKEN=123456:ABC-DEF...
+   TG_CHAT_ID=-1001234567890
+   ```
+5. 重启容器（`bash v2fun.sh update` 或 `docker compose restart`）
+
+### 限制
+
+- 单图最大 10MB
+- 支持 PNG / JPEG / WebP / GIF
+- 每个 IP 每分钟 10 张
+- TG 频道 5GB 上限到顶后，老图仍可访问，新图传不上去（实际个人使用很难触达）
+
+### 替换其他图床
+
+想换 sm.ms / EasyImage / S3 等？编辑 `server/imageHost.mjs`，按 `isEnabled / upload / resolve` 三个函数的签名替换实现即可，其他代码不用动。
+
 ## License
 
 MIT
