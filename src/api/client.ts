@@ -143,6 +143,20 @@ export const web = {
       body: JSON.stringify({ title, content, nodeName, syntax }),
     }).then(r => r.json()) as Promise<WebResult>,
 
+  uploadImage: (file: File) => {
+    const fd = new FormData()
+    fd.append('file', file)
+    return fetch('/web/upload-image', {
+      method: 'POST',
+      credentials: 'same-origin',
+      body: fd,
+    }).then(readJsonOrFail) as Promise<{ success: boolean; url?: string; error?: string }>
+  },
+
+  uploadCapability: () =>
+    fetch('/web/upload-capability', { credentials: 'same-origin' })
+      .then(readJsonOrFail) as Promise<{ success: boolean; enabled: boolean; maxSizeBytes?: number; mimes?: string[] }>,
+
   searchTopics: (params: { q: string; from?: number; size?: number; sort?: 'sumup' | 'created' }) => {
     const qs = new URLSearchParams({
       q: params.q,
