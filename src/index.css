@@ -314,9 +314,6 @@ button {
   line-height: 1.75;
   color: var(--text-primary);
   word-break: break-word;
-  /* Line-length cap. Keeps prose readable on wide desktop panels without
-     forcing the surrounding section to be narrow. */
-  max-width: 72ch;
 }
 
 .rendered-content p {
