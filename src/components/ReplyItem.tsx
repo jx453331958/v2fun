@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { formatDistanceToNow } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
 import { web, getTopicWebUrl } from '../api/client'
 import type { V2Reply } from '../types'
 import { sanitizeHtml } from '../utils/sanitize'
+import { useCodeBlockCopy } from '../hooks/useCodeBlockCopy'
 import ConfirmDialog from './ConfirmDialog'
 import styles from './ReplyItem.module.css'
 
@@ -24,6 +25,9 @@ export default function ReplyItem({ reply, floor, topicId, highlight, hasCookie,
   const [thanks, setThanks] = useState(reply.thanks)
   const [thanking, setThanking] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const bodyRef = useRef<HTMLDivElement>(null)
+
+  useCodeBlockCopy(bodyRef, [reply.content_rendered])
 
   const timeAgo = formatDistanceToNow(new Date(reply.created * 1000), {
     locale: zhCN,
@@ -88,6 +92,7 @@ export default function ReplyItem({ reply, floor, topicId, highlight, hasCookie,
           </span>
         </div>
         <div
+          ref={bodyRef}
           className={`${styles.content} rendered-content`}
           dangerouslySetInnerHTML={{ __html: sanitizeHtml(reply.content_rendered) }}
         />

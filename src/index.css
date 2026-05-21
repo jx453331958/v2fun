@@ -342,6 +342,7 @@ button {
 }
 
 .rendered-content pre {
+  position: relative;
   background: var(--bg-tertiary);
   padding: 12px 14px;
   border-radius: var(--radius-sm);
@@ -351,6 +352,43 @@ button {
   line-height: 1.5;
   margin: 0.75em 0;
   border: 1px solid var(--border);
+}
+
+.rendered-content pre .code-copy-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-tertiary);
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s, background 0.15s;
+  cursor: pointer;
+}
+
+.rendered-content pre:hover .code-copy-btn {
+  opacity: 1;
+}
+
+.rendered-content pre .code-copy-btn:hover {
+  color: var(--accent);
+}
+
+.rendered-content pre .code-copy-btn[data-copied="1"] {
+  color: var(--accent);
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .rendered-content pre .code-copy-btn {
+    opacity: 0.7;
+  }
 }
 
 .rendered-content code {

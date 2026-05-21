@@ -12,6 +12,7 @@ import PullToRefreshIndicator from '../components/PullToRefreshIndicator'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { useAuth } from '../hooks/useAuth'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
+import { useCodeBlockCopy } from '../hooks/useCodeBlockCopy'
 import { sanitizeHtml } from '../utils/sanitize'
 import styles from './TopicDetail.module.css'
 
@@ -50,6 +51,9 @@ export default function TopicDetail({ topicId: propTopicId, initialFloor, embedd
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const initializedForRef = useRef<number | null>(null)
+  const topicBodyRef = useRef<HTMLDivElement>(null)
+
+  useCodeBlockCopy(topicBodyRef, [topic?.content_rendered])
 
   const scrollToTop = useCallback(() => {
     if (embedded && containerRef.current) {
@@ -275,6 +279,7 @@ export default function TopicDetail({ topicId: propTopicId, initialFloor, embedd
 
           {topic.content_rendered && (
             <div
+              ref={topicBodyRef}
               className={`${styles.content} rendered-content`}
               dangerouslySetInnerHTML={{ __html: sanitizeHtml(topic.content_rendered) }}
             />
