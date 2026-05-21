@@ -1,6 +1,4 @@
-import { useContext } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
-import { UrlLocationContext } from '../App'
 import { useAuth } from '../hooks/useAuth'
 import { useIsDesktop } from '../hooks/useIsDesktop'
 import styles from './Layout.module.css'
@@ -50,32 +48,35 @@ const ICONS = {
 export default function Layout() {
   const { isLoggedIn, member } = useAuth()
   const navigate = useNavigate()
-  // useLocation() here returns the BACKGROUND location when Profile modal is
-  // open (App wraps <Routes> with location={backgroundLocation ?? location}).
-  // For sidebar-tab highlighting we want the *real* URL — read it from the
-  // App-provided context which is set to the un-overridden location.
-  const routerLocation = useLocation()
-  const urlLocation = useContext(UrlLocationContext) ?? routerLocation
-  const activeTab = getActiveTab(urlLocation.pathname)
+  // App wraps <Routes location={backgroundLocation ?? location}>, so when
+  // the Profile modal is open, useLocation() here returns the BACKGROUND
+  // location (the page the modal sits on top of). That's what we want for
+  // sidebar-tab highlighting — the active tab should reflect the underlying
+  // page, since the modal is a transient overlay, not a real navigation.
+  const location = useLocation()
+  const activeTab = getActiveTab(location.pathname)
   const isDesktop = useIsDesktop()
 
   // Desktop: open /profile as a floating modal on top of the current page
   // rather than navigating away. App.tsx watches for state.background and
   // renders ProfileModal. Shared between the sidebar nav "我的" button and
   // the bottom-left avatar button so they behave identically — both must
-  // capture the current URL as background (otherwise the modal sits on top
-  // of a fake Home page), and both must avoid stacking /profile on /profile
-  // if clicked while the modal is already open.
+  // capture the current page as background (otherwise the modal sits on
+  // top of a fake Home page) and never stack /profile on /profile.
   const openProfile = () => {
     const path = isLoggedIn ? '/profile' : '/login'
     if (path !== '/profile') {
       navigate(path)
       return
     }
-    const currentBg = (urlLocation.state as { background?: typeof urlLocation } | null)?.background
-    const bg = urlLocation.pathname === '/profile'
+    const currentBg = (location.state as { background?: typeof location } | null)?.background
+    // `location` here is already background-aware (see useLocation comment
+    // above), so when the modal is already open it's the underlying page,
+    // not "/profile". Re-clicking just re-navigates to the same background;
+    // currentBg fallback handles the rare case where state was cleared.
+    const bg = location.pathname === '/profile'
       ? currentBg ?? { pathname: '/', search: '', hash: '', state: null, key: 'profile-default-bg' }
-      : urlLocation
+      : location
     navigate(path, { state: { background: bg } })
   }
 

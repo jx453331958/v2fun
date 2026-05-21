@@ -1,13 +1,5 @@
-import { createContext, useEffect, useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { Routes, Route, useLocation, useNavigationType, type Location } from 'react-router-dom'
-
-/**
- * The true URL location. Layout needs this for sidebar-tab highlighting
- * because the outer <Routes location={backgroundLocation ?? location}>
- * override means useLocation() inside Layout returns the background
- * pathname (e.g. "/" when Profile modal is open) instead of the real URL.
- */
-export const UrlLocationContext = createContext<Location | null>(null)
 import Layout from './components/Layout'
 import Home from './pages/Home'
 import TopicDetail from './pages/TopicDetail'
@@ -65,7 +57,7 @@ export default function App() {
   }, [explicitBg, isDesktop, location.pathname])
 
   return (
-    <UrlLocationContext.Provider value={location}>
+    <>
     <ScrollToTop />
     <Routes location={backgroundLocation ?? location}>
       <Route element={<Layout />}>
@@ -86,6 +78,6 @@ export default function App() {
         <Route path="/profile" element={<ProfileModal />} />
       </Routes>
     )}
-    </UrlLocationContext.Provider>
+    </>
   )
 }
