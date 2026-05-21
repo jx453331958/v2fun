@@ -2,14 +2,16 @@ import type { ReactNode } from 'react'
 import { useTheme, ACCENTS, type AccentSlug, type ThemeMode } from '../hooks/useTheme'
 import styles from './ThemeSettings.module.css'
 
+/**
+ * Renders the appearance controls *without* an outer card. The parent
+ * (currently Profile's "外观" section) supplies the section title + chrome.
+ */
 export default function ThemeSettings() {
   const { theme, accent, setTheme, setAccent } = useTheme()
   const currentName = ACCENTS.find(a => a.slug === accent)?.name ?? ''
 
   return (
-    <div className={styles.section}>
-      <h3 className={styles.sectionTitle}>外观</h3>
-
+    <div className={styles.rows}>
       <div className={styles.row}>
         <span className={styles.rowLabel}>显示模式</span>
         <div className={styles.modeToggle} role="group" aria-label="显示模式">

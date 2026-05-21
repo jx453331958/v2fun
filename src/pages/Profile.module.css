@@ -1,41 +1,35 @@
+/* Mobile-first: cards stacked on bg-primary, no colored banner.
+   Desktop (>= 960) collapses the cards into one bg-secondary panel with
+   hairline-divided sections and a sticky header matching the rest of the
+   system (list column header, detail sticky toolbar). */
+
 .page {
   min-height: calc(100dvh - var(--tab-height) - var(--safe-bottom));
   background: var(--bg-primary);
 }
 
-@media (min-width: 960px) {
-  .page {
-    max-width: var(--desktop-content-max);
-    margin: 0 auto;
-  }
+/* Hidden on mobile; the bottom tab bar handles "where am I". */
+.stickyHeader {
+  display: none;
 }
 
-.header {
-  position: relative;
-  overflow: hidden;
+.panel {
+  padding: 16px;
+  padding-top: calc(16px + var(--safe-top));
 }
 
-.headerBg {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: calc(100px + var(--safe-top));
-  background: linear-gradient(135deg, var(--accent-glow), var(--accent-light));
-}
-
-/* light 下避免半透明 accent 在白底上变脏色块,改用 solid 弱色 + 顶部到底渐隐 */
-[data-theme="light"] .headerBg {
-  background: linear-gradient(180deg, var(--accent-light), transparent);
-}
-
-.profileCard {
-  position: relative;
+/* ── Identity card ──────────────────────────────────────────────── */
+.identity {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 64px 20px 24px;
-  padding-top: calc(64px + var(--safe-top));
+  text-align: center;
+  gap: 4px;
+  padding: 24px 20px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  margin-bottom: 10px;
 }
 
 .avatar {
@@ -43,9 +37,8 @@
   height: 72px;
   border-radius: var(--radius-lg);
   overflow: hidden;
-  border: 3px solid var(--bg-primary);
-  box-shadow: var(--glow-accent);
   background: var(--bg-tertiary);
+  margin-bottom: 8px;
 }
 
 .avatar img {
@@ -54,31 +47,63 @@
   object-fit: cover;
 }
 
+.identityMeta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
 .username {
   font-size: 1.2rem;
   font-weight: 600;
   color: var(--text-primary);
-  margin-top: 12px;
 }
 
 .tagline {
   font-size: 0.82rem;
   color: var(--text-secondary);
-  margin-top: 4px;
-  text-align: center;
 }
 
 .joinDate {
   font-size: 0.75rem;
   color: var(--text-tertiary);
-  margin-top: 4px;
   font-family: var(--font-mono);
 }
 
-.content {
-  padding: 8px 16px 24px;
+.identityLinks {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 12px;
 }
 
+.identityLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+
+.identityLink svg {
+  flex-shrink: 0;
+  color: var(--text-tertiary);
+}
+
+.identityLink:active {
+  color: var(--accent);
+}
+
+@media (hover: hover) {
+  .identityLink:hover {
+    color: var(--accent);
+  }
+}
+
+/* ── Generic section card (mobile) ──────────────────────────────── */
 .section {
   background: var(--bg-secondary);
   border-radius: var(--radius-md);
@@ -93,7 +118,7 @@
   color: var(--text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
   font-family: var(--font-mono);
 }
 
@@ -103,6 +128,7 @@
   line-height: 1.6;
 }
 
+/* ── Blocked nodes ──────────────────────────────────────────────── */
 .blockedHint {
   font-size: 0.78rem;
   color: var(--text-tertiary);
@@ -155,68 +181,49 @@
   }
 }
 
-.links {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.link {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.82rem;
-  color: var(--text-secondary);
-  text-decoration: none;
-  padding: 4px 0;
-}
-
-.link svg {
-  flex-shrink: 0;
-  color: var(--text-tertiary);
-}
-
-.link span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.noLinks {
-  font-size: 0.82rem;
-  color: var(--text-tertiary);
-}
-
-.menuItem {
+/* ── Actions section (我的主题 / 退出登录) ───────────────────── */
+.actionItem {
   display: flex;
   align-items: center;
   gap: 10px;
   width: 100%;
-  padding: 4px 0;
+  padding: 10px 0;
   font-size: 0.88rem;
   color: var(--text-primary);
+  background: none;
+  border: none;
+  text-align: left;
 }
 
-.menuItem svg:first-child {
+.actionItem + .actionItem {
+  border-top: 1px solid var(--border);
+}
+
+.actionIcon {
   color: var(--text-tertiary);
+  flex-shrink: 0;
 }
 
-.menuItem span {
+.actionLabel {
   flex: 1;
   text-align: left;
 }
 
-.menuItem svg:last-child {
+.actionArrow {
   color: var(--text-tertiary);
+  flex-shrink: 0;
 }
 
-.logoutBtn {
-  width: 100%;
-  padding: 4px;
-  font-size: 0.88rem;
+.actionDanger {
   color: var(--danger);
-  font-weight: 500;
-  text-align: center;
+}
+
+.actionDanger .actionIcon {
+  color: var(--danger);
+}
+
+.actionItem:active {
+  opacity: 0.7;
 }
 
 .version {
@@ -226,4 +233,96 @@
   color: var(--text-tertiary);
   margin-top: 16px;
   padding-bottom: 8px;
+}
+
+/* ────────────────────────────────────────────────────────────────
+   Desktop (>= 960): one bg-secondary panel filling .desktopMain,
+   sticky header on top, hairline-divided sections inside.
+   ──────────────────────────────────────────────────────────────── */
+@media (min-width: 960px) {
+  .page {
+    min-height: 100dvh;
+    background: transparent;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .stickyHeader {
+    display: flex;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    align-items: center;
+    height: var(--header-height);
+    padding: 0 32px;
+    background: var(--bg-glass);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .stickyTitle {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .panel {
+    flex: 1;
+    background: var(--bg-secondary);
+    border-left: 1px solid var(--border);
+    padding: 0;
+  }
+
+  /* Identity becomes an in-panel section with avatar on the left. */
+  .identity {
+    flex-direction: row;
+    align-items: flex-start;
+    text-align: left;
+    gap: 18px;
+    padding: 28px 32px;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    border-radius: 0;
+    margin-bottom: 0;
+  }
+
+  .avatar {
+    width: 56px;
+    height: 56px;
+    margin-bottom: 0;
+    flex-shrink: 0;
+  }
+
+  .identityMeta {
+    align-items: flex-start;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .identityLinks {
+    justify-content: flex-start;
+    margin-top: 10px;
+  }
+
+  /* Every section is a transparent stripe separated by hairlines. */
+  .section {
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 0;
+    padding: 22px 32px;
+  }
+
+  .section:last-of-type {
+    border-bottom: none;
+  }
+
+  .version {
+    text-align: left;
+    margin: 0;
+    padding: 18px 32px 24px;
+  }
 }

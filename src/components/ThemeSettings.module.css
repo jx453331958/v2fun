@@ -1,29 +1,14 @@
-.section {
-  background: var(--bg-secondary);
-  border-radius: var(--radius-md);
-  padding: 14px;
-  margin-bottom: 10px;
-  border: 1px solid var(--border);
-}
-
-.sectionTitle {
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: var(--text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin-bottom: 12px;
-  font-family: var(--font-mono);
+/* Inner rows only — the parent section provides chrome (bg, padding, title). */
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
 .row {
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-
-.row + .row {
-  margin-top: 14px;
 }
 
 .rowLabel {
@@ -43,6 +28,14 @@
   background: var(--bg-tertiary);
   border-radius: var(--radius-md);
   padding: 4px;
+}
+
+/* On desktop the parent section is wide; without a cap the two-button
+   toggle would stretch the full panel width and look like a giant strip. */
+@media (min-width: 960px) {
+  .modeToggle {
+    max-width: 320px;
+  }
 }
 
 .modeBtn {
