@@ -23,9 +23,11 @@ interface MemberPageCache {
 interface MemberPageProps {
   username?: string
   showBack?: boolean
+  onSelect?: (topicId: number) => void
+  selectedTopicId?: number | null
 }
 
-export default function MemberPage({ username: usernameProp, showBack = true }: MemberPageProps = {}) {
+export default function MemberPage({ username: usernameProp, showBack = true, onSelect, selectedTopicId }: MemberPageProps = {}) {
   const { username: paramUsername } = useParams<{ username: string }>()
   const username = usernameProp ?? paramUsername
   const cacheKey = `/member/${username}`
@@ -198,7 +200,12 @@ export default function MemberPage({ username: usernameProp, showBack = true }: 
             )}
 
             {displayTopics.map((topic) => (
-              <TopicCard key={topic.id} topic={topic} />
+              <TopicCard
+                key={topic.id}
+                topic={topic}
+                onSelect={onSelect}
+                selected={selectedTopicId != null && selectedTopicId === topic.id}
+              />
             ))}
 
             {displayTopics.length === 0 && !error && (

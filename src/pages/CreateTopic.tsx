@@ -150,7 +150,11 @@ export default function CreateTopic() {
       if (res.success && res.topicId) {
         // 发布成功后清掉草稿，避免下次进入还看到已经发出去的内容
         try { localStorage.removeItem(DRAFT_KEY) } catch { /* ignore */ }
-        navigate(`/topic/${res.topicId}`, { replace: true, state: { activeTab: 'my-topics' } })
+        if (isDesktop) {
+          navigate(`/my-topics?t=${res.topicId}`, { replace: true })
+        } else {
+          navigate(`/topic/${res.topicId}`, { replace: true })
+        }
       } else {
         setError(res.message || '发布失败，请稍后重试')
       }
