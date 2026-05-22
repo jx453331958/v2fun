@@ -39,7 +39,7 @@ export default function Profile({ inModal = false }: ProfileProps = {}) {
       member={member}
       blockedNodes={blockedNodes}
       onUnblockNode={unblockNode}
-      onGoToTopics={() => navigate(`/member/${member.username}`)}
+      onGoToTopics={() => navigate('/my-topics')}
       onLogout={handleLogout}
     />
   )
