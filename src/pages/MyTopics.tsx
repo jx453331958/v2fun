@@ -15,5 +15,5 @@ export default function MyTopics() {
 
   if (loading || !member) return null
 
-  return <MemberPage username={member.username} />
+  return <MemberPage username={member.username} showBack={false} />
 }

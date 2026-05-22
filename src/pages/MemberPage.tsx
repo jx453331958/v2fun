@@ -22,9 +22,10 @@ interface MemberPageCache {
 
 interface MemberPageProps {
   username?: string
+  showBack?: boolean
 }
 
-export default function MemberPage({ username: usernameProp }: MemberPageProps = {}) {
+export default function MemberPage({ username: usernameProp, showBack = true }: MemberPageProps = {}) {
   const { username: paramUsername } = useParams<{ username: string }>()
   const username = usernameProp ?? paramUsername
   const cacheKey = `/member/${username}`
@@ -132,7 +133,7 @@ export default function MemberPage({ username: usernameProp }: MemberPageProps =
   if (loading && status === 'idle') {
     return (
       <div className={styles.page}>
-        <Header title={username || ''} showBack />
+        <Header title={username || ''} showBack={showBack} />
         <Loading />
       </div>
     )
@@ -141,7 +142,7 @@ export default function MemberPage({ username: usernameProp }: MemberPageProps =
   if (!member) {
     return (
       <div className={styles.page}>
-        <Header title="用户" showBack />
+        <Header title="用户" showBack={showBack} />
         <div className={styles.empty}>用户不存在</div>
       </div>
     )
@@ -154,7 +155,7 @@ export default function MemberPage({ username: usernameProp }: MemberPageProps =
 
   return (
     <div className={styles.page}>
-      <Header title={member.username} showBack />
+      <Header title={member.username} showBack={showBack} />
 
       <PullToRefreshIndicator pullDistance={pullDistance} status={status} />
 
