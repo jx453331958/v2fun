@@ -3,10 +3,14 @@ import { useAuth } from '../hooks/useAuth'
 import { useIsDesktop } from '../hooks/useIsDesktop'
 import styles from './Layout.module.css'
 
-function getActiveTab(pathname: string): string {
+function getActiveTab(pathname: string, state?: unknown): string {
+  const stateTab = (state as { activeTab?: string } | null)?.activeTab
+  if (stateTab) return stateTab
+
   if (pathname === '/' || pathname.startsWith('/topic/')) return 'home'
   if (pathname === '/nodes' || pathname.startsWith('/node/')) return 'nodes'
   if (pathname === '/notifications') return 'notifications'
+  if (pathname === '/my-topics') return 'my-topics'
   if (pathname === '/profile' || pathname === '/login') return 'profile'
   return ''
 }
@@ -43,6 +47,16 @@ const ICONS = {
       <line x1="5" y1="12" x2="19" y2="12" />
     </svg>
   ),
+  'my-topics': (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="8" y1="6" x2="21" y2="6" />
+      <line x1="8" y1="12" x2="21" y2="12" />
+      <line x1="8" y1="18" x2="21" y2="18" />
+      <line x1="3" y1="6" x2="3.01" y2="6" />
+      <line x1="3" y1="12" x2="3.01" y2="12" />
+      <line x1="3" y1="18" x2="3.01" y2="18" />
+    </svg>
+  ),
 }
 
 export default function Layout() {
@@ -54,7 +68,7 @@ export default function Layout() {
   // sidebar-tab highlighting — the active tab should reflect the underlying
   // page, since the modal is a transient overlay, not a real navigation.
   const location = useLocation()
-  const activeTab = getActiveTab(location.pathname)
+  const activeTab = getActiveTab(location.pathname, location.state)
   const isDesktop = useIsDesktop()
 
   // Desktop: open /profile as a floating modal on top of the current page
@@ -81,12 +95,14 @@ export default function Layout() {
   }
 
   if (isDesktop) {
-    const navItems = [
+    type NavItem = { key: string; label: string; path: string }
+    const navItems: NavItem[] = [
       { key: 'home', label: '首页', path: '/' },
       { key: 'nodes', label: '节点', path: '/nodes' },
       { key: 'notifications', label: '通知', path: '/notifications' },
+      ...(isLoggedIn ? [{ key: 'my-topics', label: '我的主题', path: '/my-topics' }] : []),
       { key: 'profile', label: '我的', path: isLoggedIn ? '/profile' : '/login' },
-    ] as const
+    ]
 
     return (
       <div className={styles.desktopLayout}>
