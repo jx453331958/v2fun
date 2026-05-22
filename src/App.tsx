@@ -12,6 +12,7 @@ import NodeDetail from './pages/NodeDetail'
 import Notifications from './pages/Notifications'
 import MemberPage from './pages/MemberPage'
 import Search from './pages/Search'
+import MyTopics from './pages/MyTopics'
 import { useIsDesktop } from './hooks/useIsDesktop'
 
 function ScrollToTop() {
@@ -71,6 +72,7 @@ export default function App() {
         <Route path="/node/:name" element={<NodeDetail />} />
         <Route path="/member/:username" element={<MemberPage />} />
         <Route path="/search" element={<Search />} />
+        <Route path="/my-topics" element={<MyTopics />} />
       </Route>
     </Routes>
     {backgroundLocation && (
