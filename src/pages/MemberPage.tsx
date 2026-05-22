@@ -20,8 +20,13 @@ interface MemberPageCache {
   totalPages: number
 }
 
-export default function MemberPage() {
-  const { username } = useParams<{ username: string }>()
+interface MemberPageProps {
+  username?: string
+}
+
+export default function MemberPage({ username: usernameProp }: MemberPageProps = {}) {
+  const { username: paramUsername } = useParams<{ username: string }>()
+  const username = usernameProp ?? paramUsername
   const cacheKey = `/member/${username}`
   const { save, restore } = useListCache<MemberPageCache>(cacheKey)
   const cached = useRef(restore()).current
