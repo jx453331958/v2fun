@@ -11,9 +11,10 @@ const TTL = 5 * 60 * 1000 // 5 minutes
 interface ListCacheContextValue {
   save: (key: string, data: unknown) => void
   restore: (key: string) => { data: unknown; scrollY: number } | null
+  hasValidCache: (key: string) => boolean
 }
 
-const ListCacheContext = createContext<ListCacheContextValue | null>(null)
+export const ListCacheContext = createContext<ListCacheContextValue | null>(null)
 
 export function ListCacheProvider({ children }: { children: ReactNode }) {
   const cacheRef = useRef<Map<string, CacheEntry>>(new Map())
@@ -44,8 +45,14 @@ export function ListCacheProvider({ children }: { children: ReactNode }) {
     return { data: entry.data, scrollY: entry.scrollY }
   }, [])
 
+  const hasValidCache = useCallback((key: string) => {
+    const entry = cacheRef.current.get(key)
+    if (!entry) return false
+    return Date.now() - entry.timestamp <= TTL
+  }, [])
+
   return (
-    <ListCacheContext.Provider value={{ save, restore }}>
+    <ListCacheContext.Provider value={{ save, restore, hasValidCache }}>
       {children}
     </ListCacheContext.Provider>
   )
