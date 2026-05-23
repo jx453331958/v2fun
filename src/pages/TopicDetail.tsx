@@ -13,6 +13,7 @@ import ConfirmDialog from '../components/ConfirmDialog'
 import Lightbox from 'yet-another-react-lightbox'
 import Zoom from 'yet-another-react-lightbox/plugins/zoom'
 import 'yet-another-react-lightbox/styles.css'
+import '../components/lightbox-overrides.css'
 import { useAuth } from '../hooks/useAuth'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { useCodeBlockCopy } from '../hooks/useCodeBlockCopy'
@@ -55,6 +56,22 @@ export default function TopicDetail({ topicId: propTopicId, initialFloor, embedd
   const [lightboxImages, setLightboxImages] = useState<string[]>([])
   const [lightboxIndex, setLightboxIndex] = useState(0)
   const [lightboxOpen, setLightboxOpen] = useState(false)
+
+  // Lock body scroll while lightbox is open (iOS Safari ignores overflow:hidden on body)
+  useEffect(() => {
+    if (!lightboxOpen) return
+    const scrollY = window.scrollY
+    document.body.style.position = 'fixed'
+    document.body.style.top = `-${scrollY}px`
+    document.body.style.width = '100%'
+    return () => {
+      document.body.style.position = ''
+      document.body.style.top = ''
+      document.body.style.width = ''
+      window.scrollTo(0, scrollY)
+    }
+  }, [lightboxOpen])
+
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const initializedForRef = useRef<number | null>(null)
@@ -407,7 +424,7 @@ export default function TopicDetail({ topicId: propTopicId, initialFloor, embedd
         close={() => setLightboxOpen(false)}
         slides={lightboxImages.map(src => ({ src }))}
         index={lightboxIndex}
-        on={{ view: ({ index }) => setLightboxIndex(index) }}
+        on={{ view: ({ index }) => setLightboxIndex(index), click: () => setLightboxOpen(false) }}
         plugins={[Zoom]}
       />
     </div>

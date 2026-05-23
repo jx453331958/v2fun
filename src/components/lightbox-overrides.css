@@ -1,0 +1,10 @@
+/* Push toolbar below iOS notch / Dynamic Island */
+.yarl__toolbar {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* Prevent touch events bleeding through to the page on iOS */
+.yarl__root {
+  touch-action: none;
+  overscroll-behavior: contain;
+}
