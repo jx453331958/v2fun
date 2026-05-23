@@ -1,5 +1,5 @@
 import { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react'
-import { useSearchParams, useNavigate } from 'react-router-dom'
+import { useSearchParams, useNavigate, useNavigationType } from 'react-router-dom'
 import { web } from '../api/client'
 import type { V2Topic } from '../types'
 import TopicCard from '../components/TopicCard'
@@ -27,6 +27,7 @@ export default function Home() {
   const cached = useRef(restore()).current
   const isDesktop = useIsDesktop()
   const navigate = useNavigate()
+  const navType = useNavigationType()
   const [searchParams, setSearchParams] = useSearchParams()
   const { isBlocked } = useBlockedNodes()
 
@@ -98,9 +99,9 @@ export default function Home() {
     }
   }, [])
 
-  // Restore scroll position on mount (useLayoutEffect runs before paint).
+  // Restore scroll position only when navigating back (POP), not on tab-switch (PUSH).
   useLayoutEffect(() => {
-    if (cached) {
+    if (cached && navType === 'POP') {
       window.scrollTo(0, cached.scrollY)
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps

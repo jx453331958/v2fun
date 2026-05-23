@@ -1,33 +1,68 @@
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, useCallback } from 'react'
 import styles from './ImageLightbox.module.css'
 
 interface Props {
   images: string[]
   currentIndex: number
+  sourceRect: DOMRect | null
   onClose: () => void
   onChange: (index: number) => void
 }
 
-export default function ImageLightbox({ images, currentIndex, onClose, onChange }: Props) {
+type Phase = 'entering' | 'open' | 'closing'
+
+function getHeroTransform(rect: DOMRect): string {
+  const vw = window.innerWidth
+  const vh = window.innerHeight
+  const scale = rect.width / vw
+  const tx = rect.left + rect.width / 2 - vw / 2
+  const ty = rect.top + rect.height / 2 - vh / 2
+  return `translate(${tx}px, ${ty}px) scale(${scale})`
+}
+
+export default function ImageLightbox({ images, currentIndex, sourceRect, onClose, onChange }: Props) {
+  const [phase, setPhase] = useState<Phase>('entering')
+  const isClosingRef = useRef(false)
   const touchStartX = useRef(0)
+  const touchStartY = useRef(0)
 
   const prev = useCallback(() => {
+    if (isClosingRef.current) return
     onChange((currentIndex - 1 + images.length) % images.length)
   }, [currentIndex, images.length, onChange])
 
   const next = useCallback(() => {
+    if (isClosingRef.current) return
     onChange((currentIndex + 1) % images.length)
   }, [currentIndex, images.length, onChange])
 
+  const close = useCallback(() => {
+    if (isClosingRef.current) return
+    isClosingRef.current = true
+    setPhase('closing')
+    setTimeout(() => onClose(), 340)
+  }, [onClose])
+
+  useLayoutEffect(() => {
+    let raf2: number
+    const raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => setPhase('open'))
+    })
+    return () => {
+      cancelAnimationFrame(raf1)
+      cancelAnimationFrame(raf2)
+    }
+  }, [])
+
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') close()
       else if (e.key === 'ArrowLeft') prev()
       else if (e.key === 'ArrowRight') next()
     }
     document.addEventListener('keydown', handleKey)
     return () => document.removeEventListener('keydown', handleKey)
-  }, [onClose, prev, next])
+  }, [close, prev, next])
 
   useEffect(() => {
     const saved = document.body.style.overflow
@@ -37,24 +72,36 @@ export default function ImageLightbox({ images, currentIndex, onClose, onChange 
 
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX
+    touchStartY.current = e.touches[0].clientY
   }
 
   const handleTouchEnd = (e: React.TouchEvent) => {
     const dx = e.changedTouches[0].clientX - touchStartX.current
-    if (Math.abs(dx) > 50) {
+    const dy = e.changedTouches[0].clientY - touchStartY.current
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
       if (dx < 0) next()
       else prev()
     }
   }
 
+  const heroTransform = sourceRect ? getHeroTransform(sourceRect) : undefined
+  const imageStyle = (phase === 'entering' || phase === 'closing') && heroTransform
+    ? { transform: heroTransform }
+    : undefined
+
   return (
     <div
       className={styles.overlay}
-      onClick={onClose}
+      data-phase={phase}
+      onClick={close}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      <button className={styles.closeBtn} onClick={onClose} aria-label="关闭">
+      <button
+        className={styles.closeBtn}
+        onClick={e => { e.stopPropagation(); close() }}
+        aria-label="关闭"
+      >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
           <line x1="18" y1="6" x2="6" y2="18" />
           <line x1="6" y1="6" x2="18" y2="18" />
@@ -77,9 +124,9 @@ export default function ImageLightbox({ images, currentIndex, onClose, onChange 
         className={styles.image}
         src={images[currentIndex]}
         alt={`图片 ${currentIndex + 1}`}
+        data-phase={phase}
+        style={imageStyle}
         onClick={e => e.stopPropagation()}
-        onTouchStart={e => e.stopPropagation()}
-        onTouchEnd={e => e.stopPropagation()}
       />
 
       {images.length > 1 && (
@@ -95,7 +142,9 @@ export default function ImageLightbox({ images, currentIndex, onClose, onChange 
       )}
 
       {images.length > 1 && (
-        <div className={styles.counter}>{currentIndex + 1} / {images.length}</div>
+        <div className={styles.counter} data-phase={phase}>
+          {currentIndex + 1} / {images.length}
+        </div>
       )}
     </div>
   )

@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useContext } from 'react'
+import { useEffect, useLayoutEffect, useMemo } from 'react'
 import { Routes, Route, useLocation, useNavigationType, type Location } from 'react-router-dom'
-import { ListCacheContext } from './hooks/useListCache'
 import Layout from './components/Layout'
 import Home from './pages/Home'
 import TopicDetail from './pages/TopicDetail'
@@ -19,21 +18,16 @@ import { useIsDesktop } from './hooks/useIsDesktop'
 function ScrollToTop() {
   const { pathname } = useLocation()
   const navType = useNavigationType()
-  const cacheCtx = useContext(ListCacheContext)
   useEffect(() => {
-    // Disable browser's built-in scroll restoration to prevent it from
-    // racing with our manual scroll management on POP navigation.
     if (window.history.scrollRestoration !== 'manual') {
       window.history.scrollRestoration = 'manual'
     }
   }, [])
-  useEffect(() => {
-    // Skip scroll reset when the destination page has cached scroll data —
-    // the page's own useLayoutEffect will restore the correct position.
-    if (navType !== 'POP' && !cacheCtx?.hasValidCache(pathname)) {
+  useLayoutEffect(() => {
+    if (navType !== 'POP') {
       window.scrollTo(0, 0)
     }
-  }, [pathname, navType, cacheCtx])
+  }, [pathname, navType])
   return null
 }
 

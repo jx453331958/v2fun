@@ -52,6 +52,7 @@ export default function TopicDetail({ topicId: propTopicId, initialFloor, embedd
   const [replyError, setReplyError] = useState('')
   const [lightboxImages, setLightboxImages] = useState<string[]>([])
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
+  const [lightboxSourceRect, setLightboxSourceRect] = useState<DOMRect | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const initializedForRef = useRef<number | null>(null)
@@ -226,6 +227,7 @@ export default function TopicDetail({ topicId: propTopicId, initialFloor, embedd
     const idx = allImgs.indexOf(target as HTMLImageElement)
     if (idx !== -1) {
       setLightboxImages(allImgs.map(img => img.src))
+      setLightboxSourceRect(target.getBoundingClientRect())
       setLightboxIndex(idx)
     }
   }, [])
@@ -402,7 +404,8 @@ export default function TopicDetail({ topicId: propTopicId, initialFloor, embedd
         <ImageLightbox
           images={lightboxImages}
           currentIndex={lightboxIndex}
-          onClose={() => setLightboxIndex(null)}
+          sourceRect={lightboxSourceRect}
+          onClose={() => { setLightboxIndex(null); setLightboxSourceRect(null) }}
           onChange={setLightboxIndex}
         />
       )}
