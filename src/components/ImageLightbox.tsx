@@ -81,6 +81,13 @@ export default function ImageLightbox({ images, currentIndex, sourceRect, onClos
     if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
       if (dx < 0) next()
       else prev()
+    } else if (Math.abs(dx) < 8 && Math.abs(dy) < 8) {
+      // Tap: close if not touching the image or a control button
+      const target = e.changedTouches[0].target as Element
+      if (!target.closest('img') && !target.closest('button')) {
+        e.preventDefault()
+        close()
+      }
     }
   }
 
