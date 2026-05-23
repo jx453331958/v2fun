@@ -10,7 +10,9 @@ import Loading from '../components/Loading'
 import Pagination from '../components/Pagination'
 import PullToRefreshIndicator from '../components/PullToRefreshIndicator'
 import ConfirmDialog from '../components/ConfirmDialog'
-import ImageLightbox from '../components/ImageLightbox'
+import Lightbox from 'yet-another-react-lightbox'
+import Zoom from 'yet-another-react-lightbox/plugins/zoom'
+import 'yet-another-react-lightbox/styles.css'
 import { useAuth } from '../hooks/useAuth'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { useCodeBlockCopy } from '../hooks/useCodeBlockCopy'
@@ -51,8 +53,8 @@ export default function TopicDetail({ topicId: propTopicId, initialFloor, embedd
   const [thankConfirmOpen, setThankConfirmOpen] = useState(false)
   const [replyError, setReplyError] = useState('')
   const [lightboxImages, setLightboxImages] = useState<string[]>([])
-  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
-  const [lightboxSourceRect, setLightboxSourceRect] = useState<DOMRect | null>(null)
+  const [lightboxIndex, setLightboxIndex] = useState(0)
+  const [lightboxOpen, setLightboxOpen] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const initializedForRef = useRef<number | null>(null)
@@ -227,8 +229,8 @@ export default function TopicDetail({ topicId: propTopicId, initialFloor, embedd
     const idx = allImgs.indexOf(target as HTMLImageElement)
     if (idx !== -1) {
       setLightboxImages(allImgs.map(img => img.src))
-      setLightboxSourceRect(target.getBoundingClientRect())
       setLightboxIndex(idx)
+      setLightboxOpen(true)
     }
   }, [])
 
@@ -400,15 +402,14 @@ export default function TopicDetail({ topicId: propTopicId, initialFloor, embedd
         onCancel={() => setThankConfirmOpen(false)}
       />
 
-      {lightboxIndex !== null && (
-        <ImageLightbox
-          images={lightboxImages}
-          currentIndex={lightboxIndex}
-          sourceRect={lightboxSourceRect}
-          onClose={() => { setLightboxIndex(null); setLightboxSourceRect(null) }}
-          onChange={setLightboxIndex}
-        />
-      )}
+      <Lightbox
+        open={lightboxOpen}
+        close={() => setLightboxOpen(false)}
+        slides={lightboxImages.map(src => ({ src }))}
+        index={lightboxIndex}
+        on={{ view: ({ index }) => setLightboxIndex(index) }}
+        plugins={[Zoom]}
+      />
     </div>
   )
 }
