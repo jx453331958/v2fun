@@ -57,7 +57,7 @@ export function usePullToRefresh({ onRefresh }: UsePullToRefreshOptions): UsePul
 
     const onTouchStart = (e: TouchEvent) => {
       if (isActive) return
-      if (window.scrollY <= 0) {
+      if (window.scrollY < 2) {
         startYRef.current = e.touches[0].clientY
         startXRef.current = e.touches[0].clientX
         pullingRef.current = true
@@ -85,12 +85,13 @@ export function usePullToRefresh({ onRefresh }: UsePullToRefreshOptions): UsePul
         lockedRef.current = true
       }
 
-      if (dy > 0 && window.scrollY <= 0) {
+      if (dy > 0 && window.scrollY < 2) {
         e.preventDefault()
         const distance = dampen(dy)
         setPullDistance(distance)
         setStatus(distance >= THRESHOLD ? 'ready' : 'pulling')
-      } else if (dy <= 0) {
+      } else {
+        // dy <= 0 (swiped back up) or page scrolled down — reset pull state
         pullingRef.current = false
         lockedRef.current = false
         setPullDistance(0)

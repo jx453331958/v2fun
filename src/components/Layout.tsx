@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useIsDesktop } from '../hooks/useIsDesktop'
@@ -70,6 +71,24 @@ export default function Layout() {
   const location = useLocation()
   const activeTab = getActiveTab(location.pathname, location.state)
   const isDesktop = useIsDesktop()
+
+  // Remember the last page within the home tab so that clicking Home from
+  // another tab restores that page instead of always resetting to "/".
+  const lastHomeUrl = useRef('/')
+  useEffect(() => {
+    if (activeTab === 'home') {
+      lastHomeUrl.current = location.pathname + location.search
+    }
+  }, [location.pathname, location.search, activeTab])
+
+  const handleHomeClick = () => {
+    if (activeTab === 'home') {
+      // Already in home tab: clicking again resets to the list
+      navigate('/')
+    } else {
+      navigate(lastHomeUrl.current)
+    }
+  }
 
   // Desktop: open /profile as a floating modal on top of the current page
   // rather than navigating away. App.tsx watches for state.background and
@@ -172,7 +191,7 @@ export default function Layout() {
       <nav className={styles.tabBar}>
         <button
           className={`${styles.tab} ${activeTab === 'home' ? styles.active : ''}`}
-          onClick={() => navigate('/')}
+          onClick={handleHomeClick}
         >
           {ICONS.home}
           <span className={styles.tabLabel}>首页</span>
