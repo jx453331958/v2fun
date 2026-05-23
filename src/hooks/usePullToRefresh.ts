@@ -31,11 +31,20 @@ export function usePullToRefresh({ onRefresh }: UsePullToRefreshOptions): UsePul
   const lockedRef = useRef(false)
   const doneTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
+  // Refs kept current each render so event handlers always see latest values
+  // without needing to re-register listeners mid-gesture.
+  const isActiveRef = useRef(false)
+  isActiveRef.current = status === 'refreshing' || status === 'success' || status === 'error'
+
+  const onRefreshRef = useRef(onRefresh)
+  onRefreshRef.current = onRefresh
+
+  // Stable callback — deps are read through refs so this never changes identity.
   const handleRefresh = useCallback(async () => {
     setStatus('refreshing')
     setPullDistance(THRESHOLD)
     try {
-      await onRefresh()
+      await onRefreshRef.current()
       setStatus('success')
     } catch {
       setStatus('error')
@@ -44,7 +53,7 @@ export function usePullToRefresh({ onRefresh }: UsePullToRefreshOptions): UsePul
       setStatus('idle')
       setPullDistance(0)
     }, DONE_DISPLAY_MS)
-  }, [onRefresh])
+  }, [])
 
   useEffect(() => {
     return () => {
@@ -52,11 +61,12 @@ export function usePullToRefresh({ onRefresh }: UsePullToRefreshOptions): UsePul
     }
   }, [])
 
+  // Register touch listeners once at mount. isActiveRef/onRefreshRef are
+  // updated every render so there is no need to re-register on status change —
+  // re-registration during a gesture was the root cause of the stuck state.
   useEffect(() => {
-    const isActive = status === 'refreshing' || status === 'success' || status === 'error'
-
     const onTouchStart = (e: TouchEvent) => {
-      if (isActive) return
+      if (isActiveRef.current) return
       if (window.scrollY < 2) {
         startYRef.current = e.touches[0].clientY
         startXRef.current = e.touches[0].clientX
@@ -66,7 +76,7 @@ export function usePullToRefresh({ onRefresh }: UsePullToRefreshOptions): UsePul
     }
 
     const onTouchMove = (e: TouchEvent) => {
-      if (!pullingRef.current || isActive) return
+      if (!pullingRef.current || isActiveRef.current) return
       const dy = e.touches[0].clientY - startYRef.current
       const dx = e.touches[0].clientX - startXRef.current
 
@@ -91,7 +101,7 @@ export function usePullToRefresh({ onRefresh }: UsePullToRefreshOptions): UsePul
         setPullDistance(distance)
         setStatus(distance >= THRESHOLD ? 'ready' : 'pulling')
       } else {
-        // dy <= 0 (swiped back up) or page scrolled down — reset pull state
+        // dy <= 0 (swiped back up) or page scrolled — reset pull state
         pullingRef.current = false
         lockedRef.current = false
         setPullDistance(0)
@@ -100,7 +110,7 @@ export function usePullToRefresh({ onRefresh }: UsePullToRefreshOptions): UsePul
     }
 
     const onTouchEnd = () => {
-      if (!pullingRef.current || isActive) return
+      if (!pullingRef.current || isActiveRef.current) return
       pullingRef.current = false
       lockedRef.current = false
       setPullDistance((d) => {
@@ -131,7 +141,7 @@ export function usePullToRefresh({ onRefresh }: UsePullToRefreshOptions): UsePul
       document.removeEventListener('touchend', onTouchEnd)
       document.removeEventListener('touchcancel', onTouchCancel)
     }
-  }, [status, handleRefresh])
+  }, [handleRefresh])
 
   const pulling = pullingRef.current && lockedRef.current
 
