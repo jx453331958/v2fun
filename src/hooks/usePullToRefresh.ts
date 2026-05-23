@@ -112,14 +112,23 @@ export function usePullToRefresh({ onRefresh }: UsePullToRefreshOptions): UsePul
       })
     }
 
+    const onTouchCancel = () => {
+      pullingRef.current = false
+      lockedRef.current = false
+      setPullDistance(0)
+      setStatus('idle')
+    }
+
     document.addEventListener('touchstart', onTouchStart, { passive: true })
     document.addEventListener('touchmove', onTouchMove, { passive: false })
     document.addEventListener('touchend', onTouchEnd, { passive: true })
+    document.addEventListener('touchcancel', onTouchCancel, { passive: true })
 
     return () => {
       document.removeEventListener('touchstart', onTouchStart)
       document.removeEventListener('touchmove', onTouchMove)
       document.removeEventListener('touchend', onTouchEnd)
+      document.removeEventListener('touchcancel', onTouchCancel)
     }
   }, [status, handleRefresh])
 
