@@ -57,18 +57,14 @@ export default function TopicDetail({ topicId: propTopicId, initialFloor, embedd
   const [lightboxIndex, setLightboxIndex] = useState(0)
   const [lightboxOpen, setLightboxOpen] = useState(false)
 
-  // Lock body scroll while lightbox is open (iOS Safari ignores overflow:hidden on body)
+  // Lock body scroll while lightbox is open (no layout-shift; touch-action:none in CSS handles iOS bleed)
   useEffect(() => {
     if (!lightboxOpen) return
-    const scrollY = window.scrollY
-    document.body.style.position = 'fixed'
-    document.body.style.top = `-${scrollY}px`
-    document.body.style.width = '100%'
+    document.documentElement.style.overflow = 'hidden'
+    document.body.style.overflow = 'hidden'
     return () => {
-      document.body.style.position = ''
-      document.body.style.top = ''
-      document.body.style.width = ''
-      window.scrollTo(0, scrollY)
+      document.documentElement.style.overflow = ''
+      document.body.style.overflow = ''
     }
   }, [lightboxOpen])
 
@@ -424,6 +420,8 @@ export default function TopicDetail({ topicId: propTopicId, initialFloor, embedd
         close={() => setLightboxOpen(false)}
         slides={lightboxImages.map(src => ({ src }))}
         index={lightboxIndex}
+        carousel={{ finite: true }}
+        render={lightboxImages.length <= 1 ? { buttonPrev: () => null, buttonNext: () => null } : undefined}
         on={{ view: ({ index }) => setLightboxIndex(index), click: () => setLightboxOpen(false) }}
         plugins={[Zoom]}
       />

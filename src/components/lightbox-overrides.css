@@ -8,3 +8,13 @@
   touch-action: none;
   overscroll-behavior: contain;
 }
+
+/* On mobile: stretch image to fill screen width, scale height proportionally */
+@media (max-width: 960px) {
+  .yarl__slide_image {
+    width: 100vw !important;
+    height: auto !important;
+    max-height: 100svh !important;
+    object-fit: contain !important;
+  }
+}
