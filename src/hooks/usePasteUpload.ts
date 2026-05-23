@@ -35,18 +35,24 @@ async function loadCapability(): Promise<Capability> {
 
 function insertAtCursor(
   textarea: HTMLTextAreaElement,
-  insertion: string,
+  content: string,
   setValueRaw: (next: string) => void,
-) {
+): { prefix: string; suffix: string; inserted: string } {
   const before = textarea.value.slice(0, textarea.selectionStart)
   const after = textarea.value.slice(textarea.selectionEnd)
-  const next = before + insertion + after
-  setValueRaw(next)
+  // Only add newline separators when the surrounding text requires it —
+  // avoids blank leading/trailing lines when the textarea is empty or the
+  // cursor is already at a line boundary.
+  const prefix = before.length > 0 && !before.endsWith('\n') ? '\n' : ''
+  const suffix = after.length > 0 && !after.startsWith('\n') ? '\n' : ''
+  const inserted = prefix + content + suffix
+  setValueRaw(before + inserted + after)
   requestAnimationFrame(() => {
-    const pos = before.length + insertion.length
+    const pos = before.length + inserted.length
     textarea.selectionStart = textarea.selectionEnd = pos
     textarea.focus()
   })
+  return { prefix, suffix, inserted }
 }
 
 interface UsePasteUploadOptions {
@@ -98,8 +104,9 @@ export function usePasteUpload({ textareaRef, setValue, setValueRaw }: UsePasteU
     }
 
     const uniq = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-    const placeholder = `\n[上传中... ${uniq}]\n`
-    insertAtCursor(textarea, placeholder, setValueRawRef.current)
+    const { prefix, suffix, inserted: placeholder } = insertAtCursor(
+      textarea, `[上传中... ${uniq}]`, setValueRawRef.current,
+    )
 
     try {
       const res = await web.uploadImage(file)
@@ -108,13 +115,13 @@ export function usePasteUpload({ textareaRef, setValue, setValueRaw }: UsePasteU
         // V2EX 只对白名单域名（imgur 等）的裸 URL 自动转图；我们用 ![](url)
         // 让 V2EX 主题（Markdown 模式）和未来的 v2fun 自渲染层都能识别为图。
         // 回复里 V2EX 不解析 Markdown，会显示为字面字符串——已是 V2EX 系统限制。
-        replaceInValue(setValueRef.current, placeholder, `\n![](${fullUrl})\n`)
+        replaceInValue(setValueRef.current, placeholder, `${prefix}![](${fullUrl})${suffix}`)
       } else {
         const msg = errorMessage(res.error)
-        replaceInValue(setValueRef.current, placeholder, `\n${msg}\n`)
+        replaceInValue(setValueRef.current, placeholder, `${prefix}${msg}${suffix}`)
       }
     } catch {
-      replaceInValue(setValueRef.current, placeholder, `\n[上传失败：网络错误]\n`)
+      replaceInValue(setValueRef.current, placeholder, `${prefix}[上传失败：网络错误]${suffix}`)
     }
   }, [textareaRef])
 
@@ -147,8 +154,7 @@ function flashTransient(
   setValue: (updater: (prev: string) => string) => void,
   text: string,
 ) {
-  const wrapped = `\n${text}\n`
-  insertAtCursor(textarea, wrapped, setValueRaw)
+  const { inserted: wrapped } = insertAtCursor(textarea, text, setValueRaw)
   setTimeout(() => {
     setValue(prev => prev.includes(wrapped) ? prev.replace(wrapped, '') : prev)
   }, 1500)
