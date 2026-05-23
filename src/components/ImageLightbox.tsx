@@ -11,18 +11,22 @@ interface Props {
 
 type Phase = 'entering' | 'open' | 'closing'
 
-function getHeroTransform(rect: DOMRect): string {
+function buildHeroTransform(sourceRect: DOMRect, imgEl: HTMLImageElement): string | undefined {
+  const w = imgEl.offsetWidth
+  if (!w) return undefined
   const vw = window.innerWidth
   const vh = window.innerHeight
-  const scale = rect.width / vw
-  const tx = rect.left + rect.width / 2 - vw / 2
-  const ty = rect.top + rect.height / 2 - vh / 2
+  const scale = sourceRect.width / w
+  const tx = sourceRect.left + sourceRect.width / 2 - vw / 2
+  const ty = sourceRect.top + sourceRect.height / 2 - vh / 2
   return `translate(${tx}px, ${ty}px) scale(${scale})`
 }
 
 export default function ImageLightbox({ images, currentIndex, sourceRect, onClose, onChange }: Props) {
   const [phase, setPhase] = useState<Phase>('entering')
+  const [heroTransform, setHeroTransform] = useState<string | undefined>()
   const isClosingRef = useRef(false)
+  const imgRef = useRef<HTMLImageElement>(null)
   const touchStartX = useRef(0)
   const touchStartY = useRef(0)
 
@@ -38,12 +42,21 @@ export default function ImageLightbox({ images, currentIndex, sourceRect, onClos
 
   const close = useCallback(() => {
     if (isClosingRef.current) return
+    // Recalculate at close time — image is definitely loaded by now
+    if (sourceRect && imgRef.current) {
+      setHeroTransform(buildHeroTransform(sourceRect, imgRef.current))
+    }
     isClosingRef.current = true
     setPhase('closing')
     setTimeout(() => onClose(), 340)
-  }, [onClose])
+  }, [onClose, sourceRect])
 
+  // On mount: calculate hero transform (works for cached images sized immediately)
+  // and schedule open transition.
   useLayoutEffect(() => {
+    if (sourceRect && imgRef.current) {
+      setHeroTransform(buildHeroTransform(sourceRect, imgRef.current))
+    }
     let raf2: number
     const raf1 = requestAnimationFrame(() => {
       raf2 = requestAnimationFrame(() => setPhase('open'))
@@ -52,6 +65,7 @@ export default function ImageLightbox({ images, currentIndex, sourceRect, onClos
       cancelAnimationFrame(raf1)
       cancelAnimationFrame(raf2)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -82,7 +96,6 @@ export default function ImageLightbox({ images, currentIndex, sourceRect, onClos
       if (dx < 0) next()
       else prev()
     } else if (Math.abs(dx) < 8 && Math.abs(dy) < 8) {
-      // Tap: close if not touching the image or a control button
       const target = e.changedTouches[0].target as Element
       if (!target.closest('img') && !target.closest('button')) {
         e.preventDefault()
@@ -91,7 +104,6 @@ export default function ImageLightbox({ images, currentIndex, sourceRect, onClos
     }
   }
 
-  const heroTransform = sourceRect ? getHeroTransform(sourceRect) : undefined
   const imageStyle = (phase === 'entering' || phase === 'closing') && heroTransform
     ? { transform: heroTransform }
     : undefined
@@ -100,7 +112,7 @@ export default function ImageLightbox({ images, currentIndex, sourceRect, onClos
     <div
       className={styles.overlay}
       data-phase={phase}
-      onClick={close}
+      onClick={e => { if (e.target === e.currentTarget) close() }}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
@@ -128,6 +140,7 @@ export default function ImageLightbox({ images, currentIndex, sourceRect, onClos
       )}
 
       <img
+        ref={imgRef}
         className={styles.image}
         src={images[currentIndex]}
         alt={`图片 ${currentIndex + 1}`}
