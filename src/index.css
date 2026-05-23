@@ -337,8 +337,12 @@ button {
 }
 
 .rendered-content img {
+  display: block;
   border-radius: var(--radius-sm);
   margin: 0.5em 0;
+  max-width: 100%;
+  max-height: 260px;
+  cursor: pointer;
 }
 
 .rendered-content pre {

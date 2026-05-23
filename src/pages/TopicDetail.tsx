@@ -10,6 +10,7 @@ import Loading from '../components/Loading'
 import Pagination from '../components/Pagination'
 import PullToRefreshIndicator from '../components/PullToRefreshIndicator'
 import ConfirmDialog from '../components/ConfirmDialog'
+import ImageLightbox from '../components/ImageLightbox'
 import { useAuth } from '../hooks/useAuth'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { useCodeBlockCopy } from '../hooks/useCodeBlockCopy'
@@ -49,6 +50,8 @@ export default function TopicDetail({ topicId: propTopicId, initialFloor, embedd
   const [thankingTopic, setThankingTopic] = useState(false)
   const [thankConfirmOpen, setThankConfirmOpen] = useState(false)
   const [replyError, setReplyError] = useState('')
+  const [lightboxImages, setLightboxImages] = useState<string[]>([])
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const initializedForRef = useRef<number | null>(null)
@@ -75,8 +78,8 @@ export default function TopicDetail({ topicId: propTopicId, initialFloor, embedd
     setLoading(true)
     try {
       const data = await web.replies(id, p)
-      setReplies(data.result)
-      setTotalPages(data.totalPages)
+      setReplies(data.result ?? [])
+      setTotalPages(data.totalPages ?? 1)
     } finally {
       setLoading(false)
     }
@@ -105,8 +108,8 @@ export default function TopicDetail({ topicId: propTopicId, initialFloor, embedd
       web.replies(id, initialPage),
     ]).then(([t, repliesData]) => {
       setTopic(t)
-      setReplies(repliesData.result)
-      setTotalPages(repliesData.totalPages)
+      setReplies(repliesData.result ?? [])
+      setTotalPages(repliesData.totalPages ?? 1)
     }).finally(() => setLoading(false))
   }, [id, scrollToFloor])
 
@@ -216,6 +219,17 @@ export default function TopicDetail({ topicId: propTopicId, initialFloor, embedd
     textareaRef.current?.focus()
   }, [])
 
+  const handleContentImageClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement
+    if (target.tagName !== 'IMG' || !target.closest('.rendered-content')) return
+    const allImgs = Array.from(document.querySelectorAll('.rendered-content img')) as HTMLImageElement[]
+    const idx = allImgs.indexOf(target as HTMLImageElement)
+    if (idx !== -1) {
+      setLightboxImages(allImgs.map(img => img.src))
+      setLightboxIndex(idx)
+    }
+  }, [])
+
   const pageClass = embedded ? `${styles.page} ${styles.embedded}` : styles.page
 
   if (loading && status === 'idle') {
@@ -265,7 +279,7 @@ export default function TopicDetail({ topicId: propTopicId, initialFloor, embedd
         </div>
       )}
 
-      <div style={embedded ? undefined : pullStyle}>
+      <div style={embedded ? undefined : pullStyle} onClick={handleContentImageClick}>
         <article className={styles.topic}>
           {topic.member && (
             <div className={styles.topicMeta}>
@@ -383,6 +397,15 @@ export default function TopicDetail({ topicId: propTopicId, initialFloor, embedd
         onConfirm={confirmThankTopic}
         onCancel={() => setThankConfirmOpen(false)}
       />
+
+      {lightboxIndex !== null && (
+        <ImageLightbox
+          images={lightboxImages}
+          currentIndex={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+          onChange={setLightboxIndex}
+        />
+      )}
     </div>
   )
 }
