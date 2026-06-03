@@ -4,6 +4,7 @@ import { formatDistanceToNow } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
 import type { V2Topic } from '../types'
 import { useBlockedNodes } from '../hooks/useBlockedNodes'
+import { useBlockedUsers } from '../hooks/useBlockedUsers'
 import ConfirmDialog from './ConfirmDialog'
 import styles from './TopicCard.module.css'
 
@@ -21,6 +22,7 @@ interface Props {
 export default function TopicCard({ topic, onSelect, selected }: Props) {
   const navigate = useNavigate()
   const { blockNode } = useBlockedNodes()
+  const { blockUser } = useBlockedUsers()
   const timeAgo = formatDistanceToNow(new Date(topic.created * 1000), {
     locale: zhCN,
     addSuffix: true,
@@ -34,21 +36,25 @@ export default function TopicCard({ topic, onSelect, selected }: Props) {
     }
   }
 
-  // Long-press on the node badge → confirm block. Tap (short press) still
-  // navigates to the node page. touchmove cancels so a scroll gesture that
-  // happens to start on the badge isn't misread as a long-press.
+  // Long-press on the node badge → confirm block of that node; long-press on
+  // the avatar/username → confirm block of that user. Tap (short press) still
+  // navigates. touchmove cancels so a scroll gesture that happens to start on
+  // the target isn't misread as a long-press. One timer is enough since only
+  // one element is pressed at a time.
   const longPressTimer = useRef<number | null>(null)
   const longPressFired = useRef(false)
-  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [blockTarget, setBlockTarget] = useState<'node' | 'user' | null>(null)
 
-  const promptBlock = () => {
-    if (!topic.node) return
-    setConfirmOpen(true)
+  const promptBlock = (target: 'node' | 'user') => {
+    if (target === 'node' && !topic.node) return
+    if (target === 'user' && !topic.member) return
+    setBlockTarget(target)
   }
 
   const handleConfirmBlock = () => {
-    if (topic.node) blockNode(topic.node.name)
-    setConfirmOpen(false)
+    if (blockTarget === 'node' && topic.node) blockNode(topic.node.name)
+    if (blockTarget === 'user' && topic.member) blockUser(topic.member.username)
+    setBlockTarget(null)
   }
 
   const clearLongPress = () => {
@@ -58,31 +64,46 @@ export default function TopicCard({ topic, onSelect, selected }: Props) {
     }
   }
 
-  const handleNodeTouchStart = () => {
+  const startLongPress = (target: 'node' | 'user') => {
     longPressFired.current = false
     clearLongPress()
     longPressTimer.current = window.setTimeout(() => {
       longPressFired.current = true
-      promptBlock()
+      promptBlock(target)
     }, LONG_PRESS_MS)
   }
 
-  const handleNodeTouchEnd = () => clearLongPress()
+  // Suppress the click that fires after a long-press completes on touch devices.
+  const consumeLongPress = () => {
+    if (longPressFired.current) {
+      longPressFired.current = false
+      return true
+    }
+    return false
+  }
+
+  const handleMemberClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (consumeLongPress()) return
+    navigate(`/member/${topic.member.username}`)
+  }
+
+  const handleMemberContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    promptBlock('user')
+  }
 
   const handleNodeClick = (e: React.MouseEvent) => {
     e.stopPropagation()
-    // Suppress the click that fires after a long-press completes on touch devices.
-    if (longPressFired.current) {
-      longPressFired.current = false
-      return
-    }
+    if (consumeLongPress()) return
     navigate(`/node/${topic.node.name}`)
   }
 
   const handleNodeContextMenu = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    promptBlock()
+    promptBlock('node')
   }
 
   return (
@@ -95,10 +116,12 @@ export default function TopicCard({ topic, onSelect, selected }: Props) {
         {topic.member && (
           <div
             className={styles.avatar}
-            onClick={(e) => {
-              e.stopPropagation()
-              navigate(`/member/${topic.member.username}`)
-            }}
+            onClick={handleMemberClick}
+            onContextMenu={handleMemberContextMenu}
+            onTouchStart={() => startLongPress('user')}
+            onTouchEnd={clearLongPress}
+            onTouchMove={clearLongPress}
+            onTouchCancel={clearLongPress}
           >
             <img
               src={topic.member.avatar_normal || topic.member.avatar}
@@ -111,10 +134,12 @@ export default function TopicCard({ topic, onSelect, selected }: Props) {
           {topic.member && (
             <span
               className={styles.username}
-              onClick={(e) => {
-                e.stopPropagation()
-                navigate(`/member/${topic.member.username}`)
-              }}
+              onClick={handleMemberClick}
+              onContextMenu={handleMemberContextMenu}
+              onTouchStart={() => startLongPress('user')}
+              onTouchEnd={clearLongPress}
+              onTouchMove={clearLongPress}
+              onTouchCancel={clearLongPress}
             >
               {topic.member.username}
             </span>
@@ -128,10 +153,10 @@ export default function TopicCard({ topic, onSelect, selected }: Props) {
                   className={styles.node}
                   onClick={handleNodeClick}
                   onContextMenu={handleNodeContextMenu}
-                  onTouchStart={handleNodeTouchStart}
-                  onTouchEnd={handleNodeTouchEnd}
-                  onTouchMove={handleNodeTouchEnd}
-                  onTouchCancel={handleNodeTouchEnd}
+                  onTouchStart={() => startLongPress('node')}
+                  onTouchEnd={clearLongPress}
+                  onTouchMove={clearLongPress}
+                  onTouchCancel={clearLongPress}
                 >
                   {topic.node.title}
                 </span>
@@ -147,18 +172,26 @@ export default function TopicCard({ topic, onSelect, selected }: Props) {
       </div>
       <h3 className={styles.title}>{topic.title}</h3>
     </article>
-    {topic.node && (
-      <ConfirmDialog
-        open={confirmOpen}
-        title={`屏蔽节点「${topic.node.title}」?`}
-        message="以后该节点的主题不再出现在列表，可在「我的 → 已屏蔽节点」恢复"
-        confirmText="屏蔽"
-        cancelText="取消"
-        onConfirm={handleConfirmBlock}
-        onCancel={() => setConfirmOpen(false)}
-        variant="block"
-      />
-    )}
+    <ConfirmDialog
+      open={blockTarget === 'node'}
+      title={topic.node ? `屏蔽节点「${topic.node.title}」?` : ''}
+      message="以后该节点的主题不再出现在列表，可在「我的 → 已屏蔽节点」恢复"
+      confirmText="屏蔽"
+      cancelText="取消"
+      onConfirm={handleConfirmBlock}
+      onCancel={() => setBlockTarget(null)}
+      variant="block"
+    />
+    <ConfirmDialog
+      open={blockTarget === 'user'}
+      title={topic.member ? `屏蔽用户「${topic.member.username}」?` : ''}
+      message="以后 TA 的主题不再出现在列表，可在「我的 → 已屏蔽用户」恢复"
+      confirmText="屏蔽"
+      cancelText="取消"
+      onConfirm={handleConfirmBlock}
+      onCancel={() => setBlockTarget(null)}
+      variant="block"
+    />
     </>
   )
 }

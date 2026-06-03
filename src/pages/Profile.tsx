@@ -4,6 +4,7 @@ import { formatDistanceToNow } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
 import { useAuth } from '../hooks/useAuth'
 import { useBlockedNodes } from '../hooks/useBlockedNodes'
+import { useBlockedUsers } from '../hooks/useBlockedUsers'
 import Loading from '../components/Loading'
 import ThemeSettings from '../components/ThemeSettings'
 import type { V2Member } from '../types'
@@ -18,6 +19,7 @@ interface ProfileProps {
 export default function Profile({ inModal = false }: ProfileProps = {}) {
   const { member, loading, logout, isLoggedIn } = useAuth()
   const { blockedNodes, unblockNode } = useBlockedNodes()
+  const { blockedUsers, unblockUser } = useBlockedUsers()
   const navigate = useNavigate()
 
   if (loading) return <Loading />
@@ -39,6 +41,8 @@ export default function Profile({ inModal = false }: ProfileProps = {}) {
       member={member}
       blockedNodes={blockedNodes}
       onUnblockNode={unblockNode}
+      blockedUsers={blockedUsers}
+      onUnblockUser={unblockUser}
       onGoToTopics={() => navigate('/my-topics')}
       onLogout={handleLogout}
     />
@@ -63,11 +67,13 @@ interface BodyProps {
   member: V2Member
   blockedNodes: string[]
   onUnblockNode: (name: string) => void
+  blockedUsers: string[]
+  onUnblockUser: (username: string) => void
   onGoToTopics: () => void
   onLogout: () => void
 }
 
-function ProfileBody({ member, blockedNodes, onUnblockNode, onGoToTopics, onLogout }: BodyProps): ReactNode {
+function ProfileBody({ member, blockedNodes, onUnblockNode, blockedUsers, onUnblockUser, onGoToTopics, onLogout }: BodyProps): ReactNode {
   const joinedAgo = formatDistanceToNow(new Date(member.created * 1000), {
     locale: zhCN,
     addSuffix: true,
@@ -147,6 +153,31 @@ function ProfileBody({ member, blockedNodes, onUnblockNode, onGoToTopics, onLogo
                 <button
                   className={styles.blockedRemove}
                   onClick={() => onUnblockNode(name)}
+                  aria-label={`解除屏蔽 ${name}`}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className={styles.section}>
+        <h3 className={styles.sectionTitle}>已屏蔽用户</h3>
+        {blockedUsers.length === 0 ? (
+          <p className={styles.blockedHint}>长按列表里的头像或用户名可屏蔽</p>
+        ) : (
+          <div className={styles.blockedList}>
+            {blockedUsers.map((name) => (
+              <span key={name} className={styles.blockedChip}>
+                <span className={styles.blockedName}>{name}</span>
+                <button
+                  className={styles.blockedRemove}
+                  onClick={() => onUnblockUser(name)}
                   aria-label={`解除屏蔽 ${name}`}
                 >
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

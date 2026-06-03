@@ -11,6 +11,7 @@ import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { useListCache } from '../hooks/useListCache'
 import { useIsDesktop } from '../hooks/useIsDesktop'
 import { useBlockedNodes } from '../hooks/useBlockedNodes'
+import { useBlockedUsers } from '../hooks/useBlockedUsers'
 import styles from './Home.module.css'
 
 type Tab = 'hot' | 'latest'
@@ -30,6 +31,7 @@ export default function Home() {
   const navType = useNavigationType()
   const [searchParams, setSearchParams] = useSearchParams()
   const { isBlocked } = useBlockedNodes()
+  const { isBlocked: isUserBlocked } = useBlockedUsers()
 
   const [tab, setTab] = useState<Tab>(cached?.data.tab ?? 'latest')
   const [topics, setTopics] = useState<V2Topic[]>(cached?.data.topics ?? [])
@@ -170,7 +172,9 @@ export default function Home() {
 
   // Filter happens at render time only — `topics` state stays raw so the
   // tab-switch scroll-restore logic keeps working unchanged.
-  const visibleTopics = topics.filter((t) => !isBlocked(t.node?.name))
+  const visibleTopics = topics.filter(
+    (t) => !isBlocked(t.node?.name) && !isUserBlocked(t.member?.username),
+  )
   const allFiltered = topics.length > 0 && visibleTopics.length === 0
 
   const listSection = (
